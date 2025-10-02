@@ -1,14 +1,22 @@
 # SuperMe SDK
 
-Python SDK for SuperMe AI API with OpenAI-compatible interface.
+Python SDK for SuperMe AI. Supports chat completions and MCP protocol.
 
 ## Features
 
-✅ **OpenAI-Compatible Interface** - Drop-in replacement for OpenAI Python client
-✅ **Simple Authentication** - Username/password login with automatic JWT handling
-✅ **Conversation Management** - Multi-turn conversations with automatic tracking
-✅ **Personalized AI** - Access to SuperMe's personalized AI responses
-✅ **Type Hints** - Full type annotations for better IDE support
+- Chat completion support for SuperMe using standard OpenAI format
+- Model Context Protocol (MCP) for tool calling and structured interactions
+
+## Supported Operations
+
+### Chat Completions
+- Ask questions to user profiles
+- Multi-turn conversations with history
+- Structured JSON responses
+
+### MCP Protocol
+- List your conversations
+- Get conversation details
 
 ## Installation
 
@@ -32,7 +40,7 @@ from superme_sdk import SuperMeClient
 # Initialize client (automatically logs in)
 client = SuperMeClient(
     username="your-username",
-    password="your-password"
+    key="your-api-key"
 )
 
 # Simple question
@@ -49,7 +57,7 @@ from superme_sdk import SuperMeClient
 
 client = SuperMeClient(
     username="your-username",
-    password="your-password"
+    key="your-api-key"
 )
 
 # Use OpenAI-compatible interface
@@ -107,7 +115,7 @@ print(response2)
 ```python
 client = SuperMeClient(
     username="your-username",
-    password="your-password",
+    key="your-api-key",
     base_url="http://localhost:5000"
 )
 ```
@@ -117,7 +125,7 @@ client = SuperMeClient(
 ```python
 client = SuperMeClient(
     username="your-username",
-    password="your-password",
+    key="your-api-key",
     auto_login=False
 )
 
@@ -150,7 +158,7 @@ Main client class for interacting with SuperMe API.
 ```python
 SuperMeClient(
     username: str,
-    password: str,
+    key: str,
     base_url: str = "https://api.superme.ai",
     auto_login: bool = True
 )
@@ -158,7 +166,7 @@ SuperMeClient(
 
 **Parameters:**
 - `username` - SuperMe username
-- `password` - SuperMe password
+- `key` - SuperMe API key
 - `base_url` - Base URL for SuperMe API (default: `https://api.superme.ai`)
 - `auto_login` - Automatically login on initialization (default: `True`)
 

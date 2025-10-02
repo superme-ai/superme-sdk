@@ -7,7 +7,7 @@ from superme_sdk import SuperMeClient
 def main():
     client = SuperMeClient(
         username="your-username",
-        password="your-password",
+        key="your-api-key",
         base_url="http://localhost:5000",
     )
 

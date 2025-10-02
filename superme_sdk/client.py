@@ -16,7 +16,7 @@ class SuperMeClient:
     Example:
         >>> client = SuperMeClient(
         ...     username="your-username",
-        ...     password="your-password",
+        ...     key="your-api-key",
         ...     base_url="https://api.superme.ai"
         ... )
         >>> response = client.chat.completions.create(
@@ -30,7 +30,7 @@ class SuperMeClient:
     def __init__(
         self,
         username: str,
-        password: str,
+        key: str,
         base_url: str = "https://api.superme.ai",
         auto_login: bool = True,
     ):
@@ -39,12 +39,12 @@ class SuperMeClient:
 
         Args:
             username: SuperMe username
-            password: SuperMe password
+            key: SuperMe API key
             base_url: Base URL for SuperMe API (default: https://api.superme.ai)
             auto_login: Automatically login on initialization (default: True)
         """
         self.username = username
-        self.password = password
+        self.key = key
         self.base_url = base_url.rstrip("/")
         self._jwt_token: Optional[str] = None
         self._openai_client: Optional[OpenAI] = None
@@ -66,7 +66,7 @@ class SuperMeClient:
             f"{self.base_url}/login",
             json={
                 "username": self.username,
-                "password": self.password,
+                "password": self.key,
                 "client": "MCP",
             },
         )
