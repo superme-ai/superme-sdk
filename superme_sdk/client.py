@@ -21,7 +21,7 @@ class SuperMeClient:
         >>> response = client.chat.completions.create(
         ...     model="gpt-4",
         ...     messages=[{"role": "user", "content": "Hello!"}],
-        ...     extra_body={"user": "1"}
+        ...     extra_body={"username": "ludo"}
         ... )
         >>> print(response.choices[0].message.content)
     """
@@ -44,7 +44,7 @@ class SuperMeClient:
 
         # Initialize OpenAI client with SuperMe endpoint
         self._openai_client = OpenAI(
-            base_url=f"{self.base_url}/mcp", api_key=self.api_key
+            base_url=f"{self.base_url}/sdk", api_key=self.api_key # use /sdk here in case as we are directly using the OpenAI client
         )
 
 
@@ -60,7 +60,7 @@ class SuperMeClient:
             >>> response = client.chat.completions.create(
             ...     model="gpt-4",
             ...     messages=[{"role": "user", "content": "Hello!"}],
-            ...     extra_body={"user": "1"}
+            ...     extra_body={"username": "ludo"}
             ... )
         """
         return self._openai_client.chat
@@ -73,7 +73,7 @@ class SuperMeClient:
     def ask(
         self,
         question: str,
-        user_id: str = "1",
+        username: str = "ludo",
         conversation_id: Optional[str] = None,
         max_tokens: int = 1000,
         **kwargs,
@@ -83,7 +83,7 @@ class SuperMeClient:
 
         Args:
             question: The question to ask
-            user_id: SuperMe user ID to query (default: "1")
+            username: SuperMe username to query (default: "ludo")
             conversation_id: Continue existing conversation (optional)
             max_tokens: Maximum tokens in response (default: 1000)
             **kwargs: Additional arguments to pass to OpenAI client
@@ -92,10 +92,10 @@ class SuperMeClient:
             AI response as string
 
         Example:
-            >>> answer = client.ask("What are growth strategies?", user_id="1")
+            >>> answer = client.ask("What are growth strategies?", username="ludo")
             >>> print(answer)
         """
-        extra_body = {"user": user_id}
+        extra_body = {"username": username}
         if conversation_id:
             extra_body["conversation_id"] = conversation_id
 
@@ -112,7 +112,7 @@ class SuperMeClient:
     def ask_with_history(
         self,
         messages: list[dict],
-        user_id: str = "1",
+        username: str = "ludo",
         conversation_id: Optional[str] = None,
         max_tokens: int = 1000,
         **kwargs,
@@ -122,7 +122,7 @@ class SuperMeClient:
 
         Args:
             messages: List of messages in OpenAI format
-            user_id: SuperMe user ID to query (default: "1")
+            username: SuperMe username to query (default: "ludo")
             conversation_id: Continue existing conversation (optional)
             max_tokens: Maximum tokens in response (default: 1000)
             **kwargs: Additional arguments to pass to OpenAI client
@@ -136,11 +136,14 @@ class SuperMeClient:
             ...     {"role": "assistant", "content": "Product-market fit..."},
             ...     {"role": "user", "content": "How to measure it?"}
             ... ]
-            >>> answer, conv_id = client.ask_with_history(messages, user_id="1")
+            >>> answer, conv_id = client.ask_with_history(messages, username="ludo")
         """
-        extra_body = {"user": user_id}
-        if conversation_id:
-            extra_body["conversation_id"] = conversation_id
+        extra_body = {"username": username}
+        # Note: conversation_id is not supported in extra_body for this API
+        # Conversation context should be maintained through message history
+
+        # Remove any conversation_id from kwargs to prevent conflicts
+        kwargs.pop("conversation_id", None)
 
         response = self.chat.completions.create(
             model="gpt-4",
