@@ -6,8 +6,8 @@ from superme_sdk import SuperMeClient
 
 def main():
     client = SuperMeClient(
-        api_key="your-api-key",
-        base_url="http://localhost:5000",
+        api_key="YOUR_API_KEY_HERE",
+        base_url="https://api.superme.ai",
     )
 
     print("🚀 SuperMe SDK Advanced Example")
@@ -22,7 +22,7 @@ def main():
     q1 = "Who is the founder of Y Combinator?"
     conversation.append({"role": "user", "content": q1})
     response1 = client.chat.completions.create(
-        model="gpt-4", messages=conversation, extra_body={"user": "1"}, max_tokens=100
+        model="gpt-4", messages=conversation, extra_body={"username": "ludo"}, max_tokens=100
     )
     a1 = response1.choices[0].message.content
     conversation.append({"role": "assistant", "content": a1})
@@ -33,7 +33,7 @@ def main():
     q2 = "What companies did he help start?"
     conversation.append({"role": "user", "content": q2})
     response2 = client.chat.completions.create(
-        model="gpt-4", messages=conversation, extra_body={"user": "1"}, max_tokens=150
+        model="gpt-4", messages=conversation, extra_body={"username": "ludo"}, max_tokens=150
     )
     a2 = response2.choices[0].message.content
     conversation.append({"role": "assistant", "content": a2})
@@ -42,19 +42,32 @@ def main():
 
     # 2. Using raw API access
     print("\n2️⃣ Raw API access:")
-    raw_response = client.raw_request(
-        "/mcp", json={"method": "initialize", "params": {}}
-    )
-    print(f"MCP initialize response: {raw_response.json()}")
+    try:
+        raw_response = client.raw_request(
+            "/mcp", json={"method": "initialize", "params": {}}
+        )
+        print(f"Response status: {raw_response.status_code}")
+        print(f"Response headers: {dict(raw_response.headers)}")
+        
+        if raw_response.status_code == 200:
+            if raw_response.text.strip():
+                print(f"MCP initialize response: {raw_response.json()}")
+            else:
+                print("MCP endpoint returned empty response")
+        else:
+            print(f"Request failed with status {raw_response.status_code}")
+            print(f"Response text: {raw_response.text}")
+    except Exception as e:
+        print(f"Error making raw request: {e}")
 
     # 3. Different user profiles
     print("\n3️⃣ Querying different user profiles:")
-    users = ["1", "2"]
+    usernames = ["ludo", "casey"]
     question = "What are your areas of expertise?"
 
-    for user_id in users:
-        answer = client.ask(question, user_id=user_id, max_tokens=100)
-        print(f"\nUser {user_id}: {answer[:150]}...")
+    for username in usernames:
+        answer = client.ask(question, username=username, max_tokens=100)
+        print(f"\nUser {username}: {answer[:150]}...")
 
     # 4. Custom parameters
     print("\n4️⃣ Using custom parameters:")
@@ -66,7 +79,7 @@ def main():
                 "content": "List 3 growth marketing tactics in a structured way",
             }
         ],
-        extra_body={"user": "1", "response_format": {"type": "json_object"}},
+        extra_body={"username": "ludo", "response_format": {"type": "json_object"}},
         max_tokens=300,
     )
     print(f"Structured response:\n{response.choices[0].message.content}")
