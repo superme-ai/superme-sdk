@@ -5,10 +5,9 @@ from superme_sdk import SuperMeClient
 
 
 def main():
-    # Initialize client
     client = SuperMeClient(
-        api_key="your-api-key",
-        base_url="http://localhost:5000",  # Change to https://api.superme.ai for production
+        api_key="YOUR_API_KEY_HERE",
+        base_url="https://api.superme.ai",
     )
 
     print("🚀 SuperMe SDK Simple Example")
@@ -16,7 +15,7 @@ def main():
 
     # Simple question
     print("\n1️⃣ Simple question:")
-    answer = client.ask("What are the key principles of growth marketing?", user_id="1")
+    answer = client.ask("What are the key principles of growth marketing?", username="ludo")
     print(f"Answer: {answer[:200]}...")
 
     # Using OpenAI-compatible interface
@@ -24,7 +23,7 @@ def main():
     response = client.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": "What is product-market fit?"}],
-        extra_body={"user": "1"},
+        extra_body={"username": "ludo"},
         max_tokens=150,
     )
     print(f"Response: {response.choices[0].message.content[:200]}...")
@@ -33,14 +32,14 @@ def main():
     print("\n3️⃣ Multi-turn conversation:")
     messages = [{"role": "user", "content": "What is growth hacking?"}]
 
-    response1, conv_id = client.ask_with_history(messages, user_id="1")
+    response1, conv_id = client.ask_with_history(messages, username="ludo")
     print(f"First response: {response1[:150]}...")
 
     messages.append({"role": "assistant", "content": response1})
     messages.append({"role": "user", "content": "Give me 3 examples"})
 
     response2, conv_id = client.ask_with_history(
-        messages, user_id="1", conversation_id=conv_id
+        messages, username="ludo", conversation_id=conv_id
     )
     print(f"Second response: {response2[:150]}...")
 
