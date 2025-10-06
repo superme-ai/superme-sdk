@@ -15,75 +15,38 @@ class SuperMeClient:
 
     Example:
         >>> client = SuperMeClient(
-        ...     username="your-username",
-        ...     key="your-api-key",
+        ...     api_key="your-api-key",
         ...     base_url="https://api.superme.ai"
         ... )
         >>> response = client.chat.completions.create(
         ...     model="gpt-4",
         ...     messages=[{"role": "user", "content": "Hello!"}],
-        ...     user="1"
+        ...     extra_body={"user": "1"}
         ... )
         >>> print(response.choices[0].message.content)
     """
 
     def __init__(
         self,
-        username: str,
-        key: str,
+        api_key: str,
         base_url: str = "https://api.superme.ai",
-        auto_login: bool = True,
     ):
         """
         Initialize SuperMe client.
 
         Args:
-            username: SuperMe username
-            key: SuperMe API key
+            api_key: SuperMe API key (get from Settings -> Account -> Account Management -> API Keys)
             base_url: Base URL for SuperMe API (default: https://api.superme.ai)
-            auto_login: Automatically login on initialization (default: True)
         """
-        self.username = username
-        self.key = key
+        self.api_key = api_key
         self.base_url = base_url.rstrip("/")
-        self._jwt_token: Optional[str] = None
         self._openai_client: Optional[OpenAI] = None
-
-        if auto_login:
-            self.login()
-
-    def login(self) -> str:
-        """
-        Login to SuperMe and get JWT token.
-
-        Returns:
-            JWT token
-
-        Raises:
-            Exception: If login fails
-        """
-        response = requests.post(
-            f"{self.base_url}/login",
-            json={
-                "username": self.username,
-                "password": self.key,
-                "client": "MCP",
-            },
-        )
-
-        if response.status_code != 200:
-            raise Exception(
-                f"Login failed with status {response.status_code}: {response.text}"
-            )
-
-        self._jwt_token = response.json()["backend_token"]
 
         # Initialize OpenAI client with SuperMe endpoint
         self._openai_client = OpenAI(
-            base_url=f"{self.base_url}/mcp", api_key=self._jwt_token
+            base_url=f"{self.base_url}/mcp", api_key=self.api_key
         )
 
-        return self._jwt_token
 
     @property
     def chat(self) -> Any:
@@ -100,14 +63,12 @@ class SuperMeClient:
             ...     extra_body={"user": "1"}
             ... )
         """
-        if not self._openai_client:
-            raise Exception("Not logged in. Call login() first.")
         return self._openai_client.chat
 
     @property
-    def token(self) -> Optional[str]:
-        """Get the current JWT token."""
-        return self._jwt_token
+    def token(self) -> str:
+        """Get the current API key."""
+        return self.api_key
 
     def ask(
         self,
@@ -218,11 +179,8 @@ class SuperMeClient:
             ...     json={"method": "tools/list"}
             ... )
         """
-        if not self._jwt_token:
-            raise Exception("Not logged in. Call login() first.")
-
         headers = kwargs.pop("headers", {})
-        headers["Authorization"] = f"Bearer {self._jwt_token}"
+        headers["Authorization"] = f"Bearer {self.api_key}"
 
         url = f"{self.base_url}{endpoint}"
         return requests.request(method, url, headers=headers, **kwargs)
