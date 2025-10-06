@@ -7,8 +7,7 @@ from superme_sdk import SuperMeClient
 def main():
     # Initialize client
     client = SuperMeClient(
-        username="your-username",
-        key="your-api-key",
+        api_key="your-api-key",
         base_url="http://localhost:5000",  # Change to https://api.superme.ai for production
     )
 

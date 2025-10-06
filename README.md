@@ -37,10 +37,9 @@ pip install -e .
 ```python
 from superme_sdk import SuperMeClient
 
-# Initialize client (automatically logs in)
+# Initialize client with API key
 client = SuperMeClient(
-    username="your-username",
-    key="your-api-key"
+    api_key="your-api-key"
 )
 
 # Simple question
@@ -56,8 +55,7 @@ print(answer)
 from superme_sdk import SuperMeClient
 
 client = SuperMeClient(
-    username="your-username",
-    key="your-api-key"
+    api_key="your-api-key"
 )
 
 # Use OpenAI-compatible interface
@@ -114,25 +112,18 @@ print(response2)
 
 ```python
 client = SuperMeClient(
-    username="your-username",
-    key="your-api-key",
+    api_key="your-api-key",
     base_url="http://localhost:5000"
 )
 ```
 
-### Manual Login
+### Getting Your API Key
 
-```python
-client = SuperMeClient(
-    username="your-username",
-    key="your-api-key",
-    auto_login=False
-)
-
-# Login when needed
-token = client.login()
-print(f"JWT Token: {token}")
-```
+To get your API key:
+1. Log into your SuperMe account
+2. Navigate to Settings → Account → Account Management → API Keys
+3. Generate a new API key
+4. Use it in your client initialization
 
 ### Raw API Requests
 
@@ -157,28 +148,16 @@ Main client class for interacting with SuperMe API.
 
 ```python
 SuperMeClient(
-    username: str,
-    key: str,
-    base_url: str = "https://api.superme.ai",
-    auto_login: bool = True
+    api_key: str,
+    base_url: str = "https://api.superme.ai"
 )
 ```
 
 **Parameters:**
-- `username` - SuperMe username
-- `key` - SuperMe API key
+- `api_key` - SuperMe API key (get from Settings → Account → Account Management → API Keys)
 - `base_url` - Base URL for SuperMe API (default: `https://api.superme.ai`)
-- `auto_login` - Automatically login on initialization (default: `True`)
 
 #### Methods
-
-##### `login() -> str`
-
-Login to SuperMe and get JWT token.
-
-**Returns:** JWT token string
-
-**Raises:** Exception if login fails
 
 ##### `ask(question, user_id="1", conversation_id=None, max_tokens=1000, **kwargs) -> str`
 
@@ -234,9 +213,9 @@ response = client.chat.completions.create(
 
 ##### `token`
 
-Get the current JWT token.
+Get the current API key.
 
-**Returns:** JWT token string or `None` if not logged in
+**Returns:** API key string
 
 ## Development
 
