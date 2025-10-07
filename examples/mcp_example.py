@@ -8,8 +8,8 @@ from superme_sdk import SuperMeClient
 
 def main():
     client = SuperMeClient(
-        api_key="YOUR_API_KEY_HERE",
-        base_url="https://api.superme.ai",
+        api_key="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiUUczNmVZanFoVHVvQjVDOThWZ0YiLCJleHAiOjIwNzUxNDI3NDYsImlhdCI6MTc1OTc4Mjc0NiwiaXNfYXBpX2tleSI6dHJ1ZX0.xvYpJolL3DzzB789dyD9nWu0j3hFRrVjDEocNEMj40U",
+        base_url="http://localhost:8089",
     )
 
     print("🚀 SuperMe MCP Example")
@@ -92,6 +92,38 @@ def main():
         )
         conv_details = json.loads(conv_details_response.json()["content"][0]["text"])
         print(f"Conversation details: {conv_details}")
+
+    # 6. Get user profile (specific user)
+    print("\n6️⃣ Get user profile for specific user:")
+    profile_response = client.raw_request(
+        "/mcp",
+        json={
+            "method": "tools/call",
+            "params": {
+                "name": "get_profile",
+                "arguments": {
+                    "username": "ludo"
+                }
+            }
+        }
+    )
+    profile = json.loads(profile_response.json()["content"][0]["text"])
+    print(f"Profile for 'ludo': {json.dumps(profile, indent=2)}")
+
+    # 7. Get authenticated user's profile (no username)
+    print("\n7️⃣ Get authenticated user's profile:")
+    my_profile_response = client.raw_request(
+        "/mcp",
+        json={
+            "method": "tools/call",
+            "params": {
+                "name": "get_profile",
+                "arguments": {}
+            }
+        }
+    )
+    my_profile = json.loads(my_profile_response.json()["content"][0]["text"])
+    print(f"My profile: {json.dumps(my_profile, indent=2)}")
 
     print("\n✅ MCP Example completed!")
 
