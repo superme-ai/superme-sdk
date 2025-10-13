@@ -27,6 +27,7 @@ keywords = ["superme", "ai", "openai", "sdk", "api"]
 dependencies = [
     "openai>=1.0.0",
     "requests>=2.25.0",
+    "pydantic>=2.0.0",
 ]
 
 [project.optional-dependencies]
