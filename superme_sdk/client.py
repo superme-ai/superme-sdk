@@ -76,6 +76,7 @@ class SuperMeClient:
         username: str = "ludo",
         conversation_id: Optional[str] = None,
         max_tokens: int = 1000,
+        incognito: bool = False,
         **kwargs,
     ) -> str:
         """
@@ -86,6 +87,7 @@ class SuperMeClient:
             username: SuperMe username to query (default: "ludo")
             conversation_id: Continue existing conversation (optional)
             max_tokens: Maximum tokens in response (default: 1000)
+            incognito: When True, the user asking the question will be anonymous (default: False)
             **kwargs: Additional arguments to pass to OpenAI client
 
         Returns:
@@ -98,6 +100,8 @@ class SuperMeClient:
         extra_body = {"username": username}
         if conversation_id:
             extra_body["conversation_id"] = conversation_id
+        if incognito:
+            extra_body["incognito"] = incognito
 
         response = self.chat.completions.create(
             model="gpt-4",
@@ -115,6 +119,7 @@ class SuperMeClient:
         username: str = "ludo",
         conversation_id: Optional[str] = None,
         max_tokens: int = 1000,
+        incognito: bool = False,
         **kwargs,
     ) -> tuple[str, str]:
         """
@@ -125,6 +130,7 @@ class SuperMeClient:
             username: SuperMe username to query (default: "ludo")
             conversation_id: Continue existing conversation (optional)
             max_tokens: Maximum tokens in response (default: 1000)
+            incognito: When True, the user asking the question will be anonymous (default: False)
             **kwargs: Additional arguments to pass to OpenAI client
 
         Returns:
@@ -139,6 +145,8 @@ class SuperMeClient:
             >>> answer, conv_id = client.ask_with_history(messages, username="ludo")
         """
         extra_body = {"username": username}
+        if incognito:
+            extra_body["incognito"] = incognito
         # Note: conversation_id is not supported in extra_body for this API
         # Conversation context should be maintained through message history
 
