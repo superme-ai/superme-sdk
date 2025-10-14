@@ -55,6 +55,29 @@ def main():
     print(f"Response: {ask_result['response'][:200]}...")
     print(f"Conversation ID: {ask_result['conversation_id']}")
 
+    # 3.5. Ask an anonymous question using MCP ask tool
+    print("\n3️⃣.5 Ask an anonymous question using MCP ask tool:")
+    anonymous_ask_response = client.raw_request(
+        "/mcp",
+        json={
+            "method": "tools/call",
+            "params": {
+                "name": "ask",
+                "arguments": {
+                    "username": "ludo",
+                    "question": "What is product-market fit?",
+                    "incognito": True
+                }
+            }
+        }
+    )
+    
+    # Parse the anonymous response
+    anonymous_ask_result = json.loads(anonymous_ask_response.json()["content"][0]["text"])
+    print(f"Anonymous Question: {anonymous_ask_result['question']}")
+    print(f"Anonymous Response: {anonymous_ask_result['response'][:200]}...")
+    print(f"Anonymous Conversation ID: {anonymous_ask_result['conversation_id']}")
+
     # 4. List conversations
     print("\n4️⃣ List conversations:")
     conv_response = client.raw_request(
@@ -124,6 +147,19 @@ def main():
     )
     my_profile = json.loads(my_profile_response.json()["content"][0]["text"])
     print(f"My profile: {json.dumps(my_profile, indent=2)}")
+
+    # 8. Demonstrate SDK simplified methods with incognito
+    print("\n8️⃣ Demonstrate SDK simplified methods with incognito:")
+    
+    # Regular question
+    print("Regular question:")
+    regular_answer = client.ask("What are the key principles of startup success?", username="ludo")
+    print(f"Regular answer: {regular_answer[:100]}...")
+    
+    # Anonymous question
+    print("\nAnonymous question:")
+    anonymous_answer = client.ask("What are the key principles of startup success?", username="ludo", incognito=True)
+    print(f"Anonymous answer: {anonymous_answer[:100]}...")
 
     print("\n✅ MCP Example completed!")
 

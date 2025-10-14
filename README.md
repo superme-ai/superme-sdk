@@ -53,6 +53,10 @@ client = SuperMeClient(
 # Simple question
 answer = client.ask("What are the key principles of growth marketing?", username="ludo")
 print(answer)
+
+# Anonymous question (incognito mode)
+anonymous_answer = client.ask("What are the key principles of growth marketing?", username="ludo", incognito=True)
+print(anonymous_answer)
 ```
 
 ## Usage Examples
@@ -97,6 +101,15 @@ answer = client.ask(
     max_tokens=500
 )
 print(answer)
+
+# Anonymous question (incognito mode)
+anonymous_answer = client.ask(
+    question="What are growth strategies?",
+    username="ludo",
+    max_tokens=500,
+    incognito=True
+)
+print(anonymous_answer)
 ```
 
 ### Multi-Turn Conversations
@@ -123,6 +136,18 @@ response2, conv_id = client.ask_with_history(
     conversation_id=conv_id
 )
 print(response2)
+
+# Anonymous conversation
+anonymous_messages = [
+    {"role": "user", "content": "What is product-market fit?"}
+]
+
+anonymous_response, anonymous_conv_id = client.ask_with_history(
+    messages=anonymous_messages,
+    username="ludo",
+    incognito=True
+)
+print(anonymous_response)
 ```
 
 ### Custom Base URL (Self-Hosted)
@@ -183,6 +208,22 @@ ask_response = client.raw_request(
     }
 )
 
+# Anonymous question using MCP ask tool
+anonymous_ask_response = client.raw_request(
+    "/mcp",
+    json={
+        "method": "tools/call",
+        "params": {
+            "name": "ask",
+            "arguments": {
+                "username": "ludo",
+                "question": "Where do you live?",
+                "incognito": True
+            }
+        }
+    }
+)
+
 # Parse the response
 ask_result = json.loads(ask_response.json()["content"][0]["text"])
 print(f"Question: {ask_result['question']}")
@@ -238,7 +279,7 @@ SuperMeClient(
 
 #### Methods
 
-##### `ask(question, username="ludo", conversation_id=None, max_tokens=1000, **kwargs) -> str`
+##### `ask(question, username="ludo", conversation_id=None, max_tokens=1000, incognito=False, **kwargs) -> str`
 
 Simplified method to ask a question.
 
@@ -247,11 +288,12 @@ Simplified method to ask a question.
 - `username` - SuperMe username to query (default: `"ludo"`)
 - `conversation_id` - Continue existing conversation (optional)
 - `max_tokens` - Maximum tokens in response (default: `1000`)
+- `incognito` - When True, the user asking the question will be anonymous (default: `False`)
 - `**kwargs` - Additional arguments to pass to OpenAI client
 
 **Returns:** AI response as string
 
-##### `ask_with_history(messages, username="ludo", conversation_id=None, max_tokens=1000, **kwargs) -> tuple[str, str]`
+##### `ask_with_history(messages, username="ludo", conversation_id=None, max_tokens=1000, incognito=False, **kwargs) -> tuple[str, str]`
 
 Ask a question with conversation history.
 
@@ -260,6 +302,7 @@ Ask a question with conversation history.
 - `username` - SuperMe username to query (default: `"ludo"`)
 - `conversation_id` - Continue existing conversation (optional)
 - `max_tokens` - Maximum tokens in response (default: `1000`)
+- `incognito` - When True, the user asking the question will be anonymous (default: `False`)
 - `**kwargs` - Additional arguments to pass to OpenAI client
 
 **Returns:** Tuple of `(response_text, conversation_id)`
