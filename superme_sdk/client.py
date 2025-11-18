@@ -43,6 +43,7 @@ class SuperMeClient:
         self._openai_client: Optional[OpenAI] = None
 
         # Initialize OpenAI client with SuperMe endpoint
+        # OpenAI SDK will append /chat/completions to base_url
         self._openai_client = OpenAI(
             base_url=f"{self.base_url}/sdk", api_key=self.api_key # use /sdk here in case as we are directly using the OpenAI client
         )

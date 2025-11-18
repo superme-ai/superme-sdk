@@ -9,6 +9,7 @@ Python SDK for SuperMe AI. Supports chat completions and MCP protocol.
 - Simplified ask methods for quick questions
 - Multi-turn conversation support with history
 - Raw API access for advanced use cases
+- Network guidelines for content evaluation and moderation
 
 ## Supported Operations
 
@@ -24,6 +25,12 @@ Python SDK for SuperMe AI. Supports chat completions and MCP protocol.
 - Ask questions using MCP ask tool
 - List conversations
 - Get conversation details
+
+### Network Guidelines
+- Post quality evaluation (network/followers_only/trigger_review)
+- Content grounding analysis
+- Content quality assessment
+- Trust and safety detection
 
 ## Installation
 
@@ -258,6 +265,12 @@ response = client.raw_request(
 print(response.json())
 ```
 
+### Network Guidelines
+
+SuperMe includes comprehensive network guidelines that define content quality and safety standards. These are reference documents for understanding how content is evaluated on the network.
+
+See [superme_sdk/network_guidelines/](superme_sdk/network_guidelines/) for the complete documentation.
+
 ## API Reference
 
 ### `SuperMeClient`
@@ -338,6 +351,7 @@ response = client.chat.completions.create(
 Get the current API key.
 
 **Returns:** API key string
+
 
 ## Development
 
