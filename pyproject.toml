@@ -25,18 +25,17 @@ classifiers = [
 ]
 keywords = ["superme", "ai", "openai", "sdk", "api"]
 dependencies = [
-    "openai>=1.0.0",
-    "requests>=2.25.0",
-    "pydantic>=2.0.0",
+    "httpx>=0.24.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=3.0.0",
-    "black>=22.0.0",
+    "pytest-httpx>=0.30.0",
+    "respx>=0.21.0",
     "ruff>=0.1.0",
-    "mypy>=1.0.0",
+    "python-dotenv>=1.0.0",
 ]
 
 [project.urls]
@@ -49,16 +48,9 @@ Repository = "https://github.com/superme-ai/superme-sdk"
 where = ["."]
 include = ["superme_sdk*"]
 
-[tool.black]
-line-length = 88
-target-version = ["py38", "py39", "py310", "py311"]
-
 [tool.ruff]
 line-length = 88
 target-version = "py38"
 
-[tool.mypy]
-python_version = "3.8"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = false
+[tool.pytest.ini_options]
+testpaths = ["tests"]

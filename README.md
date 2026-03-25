@@ -1,36 +1,6 @@
 # SuperMe SDK
 
-Python SDK for SuperMe AI. Supports chat completions and MCP protocol.
-
-## Features
-
-- Chat completion support for SuperMe using standard OpenAI format
-- Model Context Protocol (MCP) for tool calling and structured interactions
-- Simplified ask methods for quick questions
-- Multi-turn conversation support with history
-- Raw API access for advanced use cases
-- Network guidelines for content evaluation and moderation
-
-## Supported Operations
-
-### Chat Completions
-- Ask questions to user profiles
-- Multi-turn conversations with history
-- Structured JSON responses
-- OpenAI-compatible interface
-
-### MCP Protocol
-- Initialize MCP connections
-- List available tools
-- Ask questions using MCP ask tool
-- List conversations
-- Get conversation details
-
-### Network Guidelines
-- Post quality evaluation (network/followers_only/trigger_review)
-- Content grounding analysis
-- Content quality assessment
-- Trust and safety detection
+Python SDK for the SuperMe API. Ask questions to professionals, search expert perspectives, manage your knowledge library, and interact via MCP.
 
 ## Installation
 
@@ -38,7 +8,7 @@ Python SDK for SuperMe AI. Supports chat completions and MCP protocol.
 pip install superme-sdk
 ```
 
-Or install from source:
+From source:
 
 ```bash
 git clone https://github.com/superme-ai/superme-sdk.git
@@ -46,358 +16,185 @@ cd superme-sdk
 pip install -e .
 ```
 
+## Authentication
+
+Get your API key at [superme.ai/settings](https://superme.ai/settings) → API Keys.
+
+**Option 1 — environment variable (recommended)**
+```bash
+export SUPERME_API_KEY=your_api_key_here
+```
+
+**Option 2 — `.env` file**
+```bash
+cp .env.example .env
+# edit .env and fill in your key
+```
+Then load it before running:
+```python
+from dotenv import load_dotenv
+load_dotenv()
+```
+Or source it in your shell:
+```bash
+set -a && source .env && set +a
+```
+
+Pass the key to the client:
+```python
+import os
+from superme_sdk import SuperMeClient
+
+client = SuperMeClient(api_key=os.environ["SUPERME_API_KEY"])
+```
+
 ## Quick Start
 
 ```python
+import os
 from superme_sdk import SuperMeClient
 
-# Initialize client with API key
-client = SuperMeClient(
-    api_key="your-api-key",
-    base_url="https://api.superme.ai"  # or "http://localhost:8089" for local
-)
+client = SuperMeClient(api_key=os.environ["SUPERME_API_KEY"])
 
-# Simple question
+# Ask a question
 answer = client.ask("What are the key principles of growth marketing?", username="ludo")
 print(answer)
 
-# Anonymous question (incognito mode)
-anonymous_answer = client.ask("What are the key principles of growth marketing?", username="ludo", incognito=True)
-print(anonymous_answer)
-```
-
-## Usage Examples
-
-The SDK includes several example files to demonstrate different use cases:
-
-- `examples/simple_example.py` - Basic usage with simple questions and OpenAI-compatible interface
-- `examples/advanced_example.py` - Advanced features including structured conversations and raw API access
-- `examples/mcp_example.py` - Complete MCP protocol usage with tool calling and conversation management
-
-### Basic Chat Completion
-
-```python
-from openai import OpenAI
-
-# One can use the OpenAI client directly with SuperMe endpoint
-client = OpenAI(
-    api_key="your-api-key",
-    base_url="https://api.superme.ai/sdk" # use /sdk here in case you are directly using the OpenAI client
-)
-
-# Standard OpenAI completion
-response = client.chat.completions.create(
-    model="gpt-4",
-    messages=[
-        {"role": "user", "content": "What is product-market fit?"}
-    ],
-    extra_body={"username": "ludo"},  # SuperMe username
-    max_tokens=150
-)
-
-print(response.choices[0].message.content)
-```
-
-### Simplified Ask Method
-
-```python
-# Simpler interface for single questions
-answer = client.ask(
-    question="What are growth strategies?",
-    username="ludo",
-    max_tokens=500
-)
-print(answer)
-
-# Anonymous question (incognito mode)
-anonymous_answer = client.ask(
-    question="What are growth strategies?",
-    username="ludo",
-    max_tokens=500,
-    incognito=True
-)
-print(anonymous_answer)
-```
-
-### Multi-Turn Conversations
-
-```python
-# First message
-messages = [
-    {"role": "user", "content": "What is product-market fit?"}
-]
-
-response1, conv_id = client.ask_with_history(
-    messages=messages,
-    username="ludo"
-)
-print(response1)
-
-# Continue conversation
-messages.append({"role": "assistant", "content": response1})
+# Multi-turn conversation
+messages = [{"role": "user", "content": "What is product-market fit?"}]
+response, conv_id = client.ask_with_history(messages, username="ludo")
+messages.append({"role": "assistant", "content": response})
 messages.append({"role": "user", "content": "How do you measure it?"})
-
-response2, conv_id = client.ask_with_history(
-    messages=messages,
-    username="ludo",
-    conversation_id=conv_id
-)
-print(response2)
-
-# Anonymous conversation
-anonymous_messages = [
-    {"role": "user", "content": "What is product-market fit?"}
-]
-
-anonymous_response, anonymous_conv_id = client.ask_with_history(
-    messages=anonymous_messages,
-    username="ludo",
-    incognito=True
-)
-print(anonymous_response)
+response2, _ = client.ask_with_history(messages, username="ludo", conversation_id=conv_id)
 ```
 
-### Custom Base URL (Self-Hosted)
+## Running Examples
 
-```python
-client = SuperMeClient(
-    api_key="your-api-key",
-    base_url="http://localhost:8089"  # Local development server
-)
+```bash
+export SUPERME_API_KEY=your_api_key_here
+
+python examples/simple_example.py
+python examples/advanced_example.py
+python examples/mcp_example.py
 ```
 
-### Getting Your API Key
-
-To get your API key:
-1. Log into your SuperMe account
-2. Navigate to Settings → Account → Account Management → API Keys
-3. Generate a new API key
-4. Use it in your client initialization
-
-### MCP Protocol Usage
-
-```python
-import json
-from superme_sdk import SuperMeClient
-
-client = SuperMeClient(
-    api_key="your-api-key",
-    base_url="https://api.superme.ai"
-)
-
-# 1. Initialize MCP connection
-init_response = client.raw_request(
-    "/mcp", 
-    json={"method": "initialize", "params": {}}
-)
-print(f"Server info: {init_response.json()['serverInfo']}")
-
-# 2. List available tools
-tools_response = client.raw_request(
-    "/mcp", 
-    json={"method": "tools/list", "params": {}}
-)
-tools = tools_response.json()["tools"]
-print(f"Available tools: {[tool['name'] for tool in tools]}")
-
-# 3. Ask a question using MCP ask tool
-ask_response = client.raw_request(
-    "/mcp",
-    json={
-        "method": "tools/call",
-        "params": {
-            "name": "ask",
-            "arguments": {
-                "username": "ludo",
-                "question": "Where do you live?"
-            }
-        }
-    }
-)
-
-# Anonymous question using MCP ask tool
-anonymous_ask_response = client.raw_request(
-    "/mcp",
-    json={
-        "method": "tools/call",
-        "params": {
-            "name": "ask",
-            "arguments": {
-                "username": "ludo",
-                "question": "Where do you live?",
-                "incognito": True
-            }
-        }
-    }
-)
-
-# Parse the response
-ask_result = json.loads(ask_response.json()["content"][0]["text"])
-print(f"Question: {ask_result['question']}")
-print(f"Response: {ask_result['response']}")
-print(f"Conversation ID: {ask_result['conversation_id']}")
-
-# 4. List conversations
-conv_response = client.raw_request(
-    "/mcp",
-    json={
-        "method": "tools/call",
-        "params": {
-            "name": "list_conversations",
-            "arguments": {"limit": 5}
-        }
-    }
-)
-conversations = json.loads(conv_response.json()["content"][0]["text"])
-print(f"Found {len(conversations)} conversations")
+Or with dotenv:
+```bash
+cp .env.example .env   # fill in your key
+set -a && source .env && set +a
+python examples/simple_example.py
 ```
-
-### Raw API Requests
-
-```python
-# Make raw requests to SuperMe API
-response = client.raw_request(
-    "/mcp",
-    json={
-        "method": "tools/list"
-    }
-)
-print(response.json())
-```
-
-### Network Guidelines
-
-SuperMe includes comprehensive network guidelines that define content quality and safety standards. These are reference documents for understanding how content is evaluated on the network.
-
-See [superme_sdk/network_guidelines/](superme_sdk/network_guidelines/) for the complete documentation.
 
 ## API Reference
 
-### `SuperMeClient`
+### `SuperMeClient(api_key, base_url="https://mcp.superme.ai", timeout=120.0)`
 
-Main client class for interacting with SuperMe API.
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `ask(question, username, *, conversation_id, max_tokens, incognito)` | `str` | Ask a single question |
+| `ask_with_history(messages, username, *, conversation_id, max_tokens, incognito)` | `(str, str\|None)` | Ask with conversation history |
+| `chat.completions.create(messages, model, *, username, conversation_id, ...)` | `ChatCompletion` | OpenAI-compatible chat completion |
+| `mcp_tool_call(tool_name, arguments)` | `dict` | Call any MCP tool by name |
+| `mcp_list_tools()` | `list[dict]` | List all available MCP tools |
+| `raw_request(method, params)` | `dict` | Raw MCP JSON-RPC request |
 
-#### Constructor
+### OpenAI-compatible interface
 
-```python
-SuperMeClient(
-    api_key: str,
-    base_url: str = "https://api.superme.ai"
-)
-```
-
-**Parameters:**
-- `api_key` - SuperMe API key (get from Settings → Account → Account Management → API Keys)
-- `base_url` - Base URL for SuperMe API (default: `https://api.superme.ai`, use `http://localhost:8089` for local development)
-
-#### Methods
-
-##### `ask(question, username="ludo", conversation_id=None, max_tokens=1000, incognito=False, **kwargs) -> str`
-
-Simplified method to ask a question.
-
-**Parameters:**
-- `question` - The question to ask
-- `username` - SuperMe username to query (default: `"ludo"`)
-- `conversation_id` - Continue existing conversation (optional)
-- `max_tokens` - Maximum tokens in response (default: `1000`)
-- `incognito` - When True, the user asking the question will be anonymous (default: `False`)
-- `**kwargs` - Additional arguments to pass to OpenAI client
-
-**Returns:** AI response as string
-
-##### `ask_with_history(messages, username="ludo", conversation_id=None, max_tokens=1000, incognito=False, **kwargs) -> tuple[str, str]`
-
-Ask a question with conversation history.
-
-**Parameters:**
-- `messages` - List of messages in OpenAI format
-- `username` - SuperMe username to query (default: `"ludo"`)
-- `conversation_id` - Continue existing conversation (optional)
-- `max_tokens` - Maximum tokens in response (default: `1000`)
-- `incognito` - When True, the user asking the question will be anonymous (default: `False`)
-- `**kwargs` - Additional arguments to pass to OpenAI client
-
-**Returns:** Tuple of `(response_text, conversation_id)`
-
-##### `raw_request(endpoint, method="POST", **kwargs) -> requests.Response`
-
-Make a raw HTTP request to SuperMe API.
-
-**Parameters:**
-- `endpoint` - API endpoint (e.g., `"/mcp/completion"`)
-- `method` - HTTP method (default: `"POST"`)
-- `**kwargs` - Additional arguments to pass to requests
-
-**Returns:** `requests.Response` object
-
-#### Properties
-
-##### `chat`
-
-Access to OpenAI-compatible chat completions interface.
-
-**Example:**
 ```python
 response = client.chat.completions.create(
     model="gpt-4",
-    messages=[{"role": "user", "content": "Hello!"}],
-    extra_body={"username": "ludo"}
+    messages=[{"role": "user", "content": "What is PLG?"}],
+    username="ludo",
 )
+print(response.choices[0].message.content)
+print(response.metadata["conversation_id"])
 ```
 
-##### `token`
+### MCP tools via SDK
 
-Get the current API key.
+```python
+# List available tools
+tools = client.mcp_list_tools()
 
-**Returns:** API key string
+# Call a tool directly
+profile = client.mcp_tool_call("get_profile", {"username": "ludo"})
 
+# Raw JSON-RPC
+result = client.raw_request("tools/list")
+```
 
-## Development
+## MCP Setup
 
-### Setup
+Connect the SuperMe MCP server (`https://mcp.superme.ai`) to your AI client.
+
+### Claude Desktop
+
+`~/.config/Claude/claude_desktop_config.json` (Linux) or `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
+
+```json
+{
+  "mcpServers": {
+    "superme": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://mcp.superme.ai", "--header", "Authorization: Bearer YOUR_TOKEN"]
+    }
+  }
+}
+```
+
+### Claude Code
 
 ```bash
-git clone https://github.com/superme-ai/superme-sdk.git
-cd superme-sdk
-pip install -e ".[dev]"
+claude mcp add --transport http --scope user superme https://mcp.superme.ai \
+  --header "Authorization: Bearer YOUR_TOKEN"
 ```
 
-### Testing
+### Cursor
+
+`~/.cursor/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "superme": {
+      "url": "https://mcp.superme.ai",
+      "headers": { "Authorization": "Bearer YOUR_TOKEN" }
+    }
+  }
+}
+```
+
+### VS Code (Copilot)
+
+`.vscode/mcp.json` in your workspace:
+
+```json
+{
+  "inputs": [
+    { "id": "superme-token", "type": "promptString", "description": "SuperMe API Token" }
+  ],
+  "servers": {
+    "superme": {
+      "type": "http",
+      "url": "https://mcp.superme.ai",
+      "headers": { "Authorization": "Bearer ${input:superme-token}" }
+    }
+  }
+}
+```
+
+VS Code will prompt once for the token and cache it.
+
+### Quick install (Claude Desktop + Cursor)
 
 ```bash
-pytest
+curl -fsSL https://superme.ai/mcp-install.sh | SUPERME_TOKEN="your-token" bash
 ```
 
-### Code Formatting
+## Network Guidelines
 
-```bash
-black superme_sdk/
-ruff check superme_sdk/
-```
-
-## Requirements
-
-- Python 3.8+
-- `openai>=1.0.0`
-- `requests>=2.25.0`
+See [network_guidelines/](network_guidelines/) for content evaluation and moderation rules used by the SuperMe network.
 
 ## License
 
-MIT License - see LICENSE file for details
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## Support
-
-For issues and questions:
-- GitHub Issues: https://github.com/superme-ai/superme-sdk/issues
-- Email: support@superme.ai
-
-## Links
-
-- Homepage: https://superme.ai
-- Documentation: https://github.com/superme-ai/superme-sdk
-- PyPI: https://pypi.org/project/superme-sdk/
+MIT
