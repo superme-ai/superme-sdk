@@ -252,3 +252,56 @@ def test_context_manager():
     with SuperMeClient(api_key="tok") as client:
         result = client.ask("hi", username="ludo")
         assert result == "Growth marketing is..."
+
+
+# ---- live integration tests ----
+# Run automatically when SUPERME_API_KEY is set and the backend is reachable.
+# Skipped silently otherwise — no flags needed.
+
+
+@pytest.mark.live
+def test_live_list_tools(live_client):
+    tools = live_client.mcp_list_tools()
+    assert isinstance(tools, list), "tools/list should return a list"
+    names = [t["name"] for t in tools]
+    assert "ask" in names, f"'ask' tool missing from {names}"
+
+
+@pytest.mark.live
+def test_live_ask(live_client, live_username):
+    result = live_client.ask("What is your name?", username=live_username)
+    assert isinstance(result, str)
+    assert len(result) > 0
+
+
+@pytest.mark.live
+def test_live_ask_with_history(live_client, live_username):
+    messages = [
+        {"role": "user", "content": "Hello"},
+        {"role": "assistant", "content": "Hi there!"},
+        {"role": "user", "content": "What can you tell me about yourself?"},
+    ]
+    text, conv_id = live_client.ask_with_history(messages, username=live_username)
+    assert isinstance(text, str) and len(text) > 0
+    assert conv_id is not None
+
+
+@pytest.mark.live
+def test_live_chat_completions_create(live_client, live_username):
+    response = live_client.chat.completions.create(
+        messages=[{"role": "user", "content": "Hello"}],
+        username=live_username,
+    )
+    assert isinstance(response, ChatCompletion)
+    assert isinstance(response.choices[0].message.content, str)
+    assert response.choices[0].message.role == "assistant"
+
+
+@pytest.mark.live
+def test_live_mcp_tool_call(live_client, live_username):
+    result = live_client.mcp_tool_call("ask", {
+        "identifier": live_username,
+        "question": "Say hi",
+    })
+    assert isinstance(result, dict)
+    assert "response" in result

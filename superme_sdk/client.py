@@ -108,7 +108,7 @@ class Completions:
         question = ""
         for msg in reversed(messages):
             if msg.get("role") == "user":
-                question = msg["content"]
+                question = msg.get("content", "")
                 break
 
         if not question:
@@ -388,7 +388,12 @@ class SuperMeClient:
         if not content_list:
             return {}
         text = content_list[0].get("text", "{}")
-        return json.loads(text)
+        parsed = json.loads(text)
+        if not isinstance(parsed, dict):
+            raise TypeError(
+                f"Expected MCP tool to return a JSON object, got {type(parsed).__name__}"
+            )
+        return parsed
 
     @staticmethod
     def _parse_sse_json(text: str) -> dict:
@@ -396,19 +401,31 @@ class SuperMeClient:
 
         SSE format is ``event: <name>\\ndata: <json>\\n\\n``.  We collect
         all ``data:`` lines from the last event block and parse them.
+
+        We track two lists: ``current_block`` (lines accumulating for the
+        event in progress) and ``last_block`` (lines from the most recently
+        *completed* event).  A blank line marks the end of an event block —
+        we commit ``current_block`` into ``last_block`` and start fresh.
+        If the stream doesn't end with a blank line the in-progress lines
+        are treated as the final block.
         """
-        data_lines: list[str] = []
+        current_block: list[str] = []
+        last_block: list[str] = []
         for line in text.splitlines():
             if line.startswith("data: "):
-                data_lines.append(line[6:])
+                current_block.append(line[6:])
             elif line.startswith("data:"):
-                data_lines.append(line[5:])
-            elif line == "" and data_lines:
-                # end of an event block — keep going in case there are more
-                pass
-        if not data_lines:
+                current_block.append(line[5:])
+            elif line == "" and current_block:
+                # end of an event block — commit and reset
+                last_block = current_block
+                current_block = []
+        # Stream may not end with a blank line; treat any trailing lines as last
+        if current_block:
+            last_block = current_block
+        if not last_block:
             raise ValueError("No data lines found in SSE response")
-        return json.loads("".join(data_lines))
+        return json.loads("".join(last_block))
 
     # ------------------------------------------------------------------
     # Context manager / cleanup
