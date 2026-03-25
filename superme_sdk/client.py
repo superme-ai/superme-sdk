@@ -1,75 +1,49 @@
-"""SuperMe client that provides OpenAI-compatible interface"""
+"""SuperMe client -- direct HTTP calls via httpx."""
+
+from __future__ import annotations
 
 from typing import Any, Optional
 
-import requests
-from openai import OpenAI
+import httpx
 
 
 class SuperMeClient:
-    """
-    SuperMe client with OpenAI-compatible interface.
+    """SuperMe API client.
 
-    This client provides a simple way to interact with SuperMe's AI API
-    using the familiar OpenAI client interface.
+    Example::
 
-    Example:
-        >>> client = SuperMeClient(
-        ...     api_key="your-api-key",
-        ...     base_url="https://api.superme.ai"
-        ... )
-        >>> response = client.chat.completions.create(
-        ...     model="gpt-4",
-        ...     messages=[{"role": "user", "content": "Hello!"}],
-        ...     extra_body={"username": "ludo"}
-        ... )
-        >>> print(response.choices[0].message.content)
+        client = SuperMeClient(api_key="your-superme-api-key")
+        answer = client.ask("What is PMF?", username="ludo")
     """
 
     def __init__(
         self,
         api_key: str,
         base_url: str = "https://api.superme.ai",
+        timeout: float = 120.0,
     ):
-        """
-        Initialize SuperMe client.
-
-        Args:
-            api_key: SuperMe API key (get from Settings -> Account -> Account Management -> API Keys)
-            base_url: Base URL for SuperMe API (default: https://api.superme.ai)
-        """
+        if not api_key:
+            raise ValueError("api_key is required")
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
-        self._openai_client: Optional[OpenAI] = None
-
-        # Initialize OpenAI client with SuperMe endpoint
-        # OpenAI SDK will append /chat/completions to base_url
-        self._openai_client = OpenAI(
-            base_url=f"{self.base_url}/sdk", api_key=self.api_key # use /sdk here in case as we are directly using the OpenAI client
+        self._http = httpx.Client(
+            base_url=self.base_url,
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            timeout=timeout,
         )
 
-
-    @property
-    def chat(self) -> Any:
-        """
-        Access to chat completions interface (OpenAI-compatible).
-
-        Returns:
-            OpenAI chat interface
-
-        Example:
-            >>> response = client.chat.completions.create(
-            ...     model="gpt-4",
-            ...     messages=[{"role": "user", "content": "Hello!"}],
-            ...     extra_body={"username": "ludo"}
-            ... )
-        """
-        return self._openai_client.chat
+    # ------------------------------------------------------------------
+    # Properties
+    # ------------------------------------------------------------------
 
     @property
     def token(self) -> str:
-        """Get the current API key."""
+        """Current API token."""
         return self.api_key
+
+    # ------------------------------------------------------------------
+    # High-level helpers
+    # ------------------------------------------------------------------
 
     def ask(
         self,
@@ -78,121 +52,154 @@ class SuperMeClient:
         conversation_id: Optional[str] = None,
         max_tokens: int = 1000,
         incognito: bool = False,
-        **kwargs,
+        **kwargs: Any,
     ) -> str:
-        """
-        Simplified method to ask a question.
+        """Ask a single question.
 
         Args:
-            question: The question to ask
-            username: SuperMe username to query (default: "ludo")
-            conversation_id: Continue existing conversation (optional)
-            max_tokens: Maximum tokens in response (default: 1000)
-            incognito: When True, the user asking the question will be anonymous (default: False)
-            **kwargs: Additional arguments to pass to OpenAI client
+            question: The question to ask.
+            username: Target SuperMe username.
+            conversation_id: Continue an existing conversation.
+            max_tokens: Max response tokens.
+            incognito: Ask anonymously.
 
         Returns:
-            AI response as string
-
-        Example:
-            >>> answer = client.ask("What are growth strategies?", username="ludo")
-            >>> print(answer)
+            Answer text.
         """
-        extra_body = {"username": username}
-        if conversation_id:
-            extra_body["conversation_id"] = conversation_id
-        if incognito:
-            extra_body["incognito"] = incognito
-
-        response = self.chat.completions.create(
-            model="gpt-4",
+        body = self._build_completion_body(
             messages=[{"role": "user", "content": question}],
-            extra_body=extra_body,
+            username=username,
+            conversation_id=conversation_id,
             max_tokens=max_tokens,
+            incognito=incognito,
             **kwargs,
         )
-
-        return response.choices[0].message.content
+        data = self._post("/sdk/chat/completions", body)
+        return data["choices"][0]["message"]["content"]
 
     def ask_with_history(
         self,
-        messages: list[dict],
+        messages: list,
         username: str = "ludo",
         conversation_id: Optional[str] = None,
         max_tokens: int = 1000,
         incognito: bool = False,
-        **kwargs,
-    ) -> tuple[str, str]:
-        """
-        Ask a question with conversation history.
+        **kwargs: Any,
+    ) -> tuple:
+        """Ask with conversation history.
 
         Args:
-            messages: List of messages in OpenAI format
-            username: SuperMe username to query (default: "ludo")
-            conversation_id: Continue existing conversation (optional)
-            max_tokens: Maximum tokens in response (default: 1000)
-            incognito: When True, the user asking the question will be anonymous (default: False)
-            **kwargs: Additional arguments to pass to OpenAI client
+            messages: List of ``{"role": ..., "content": ...}`` dicts.
+            username: Target SuperMe username.
+            conversation_id: Continue an existing conversation.
+            max_tokens: Max response tokens.
+            incognito: Ask anonymously.
 
         Returns:
-            Tuple of (response_text, conversation_id)
-
-        Example:
-            >>> messages = [
-            ...     {"role": "user", "content": "What is PMF?"},
-            ...     {"role": "assistant", "content": "Product-market fit..."},
-            ...     {"role": "user", "content": "How to measure it?"}
-            ... ]
-            >>> answer, conv_id = client.ask_with_history(messages, username="ludo")
+            ``(answer_text, conversation_id)``
         """
-        extra_body = {"username": username}
-        if incognito:
-            extra_body["incognito"] = incognito
-        # Note: conversation_id is not supported in extra_body for this API
-        # Conversation context should be maintained through message history
-
-        # Remove any conversation_id from kwargs to prevent conflicts
-        kwargs.pop("conversation_id", None)
-
-        response = self.chat.completions.create(
-            model="gpt-4",
+        body = self._build_completion_body(
             messages=messages,
-            extra_body=extra_body,
+            username=username,
+            conversation_id=conversation_id,
             max_tokens=max_tokens,
+            incognito=incognito,
             **kwargs,
         )
+        data = self._post("/sdk/chat/completions", body)
+        text = data["choices"][0]["message"]["content"]
+        conv_id = (data.get("metadata") or {}).get("conversation_id")
+        return text, conv_id
 
-        response_text = response.choices[0].message.content
-        response_conv_id = (
-            response.metadata.get("conversation_id")
-            if hasattr(response, "metadata")
-            else None
+    def chat_completions(
+        self,
+        messages: list,
+        username: str = "ludo",
+        max_tokens: int = 1000,
+        model: str = "gpt-4",
+        response_format: Optional[dict] = None,
+        **kwargs: Any,
+    ) -> dict:
+        """OpenAI-shaped chat completion (returns full response dict).
+
+        Useful when callers need the raw OpenAI-format response body.
+        """
+        body = self._build_completion_body(
+            messages=messages,
+            username=username,
+            max_tokens=max_tokens,
+            model=model,
+            response_format=response_format,
+            **kwargs,
         )
+        return self._post("/sdk/chat/completions", body)
 
-        return response_text, response_conv_id
+    # ------------------------------------------------------------------
+    # Raw HTTP
+    # ------------------------------------------------------------------
 
     def raw_request(
-        self, endpoint: str, method: str = "POST", **kwargs
-    ) -> requests.Response:
-        """
-        Make a raw HTTP request to SuperMe API.
+        self, endpoint: str, method: str = "POST", **kwargs: Any
+    ) -> httpx.Response:
+        """Make a raw HTTP request to the SuperMe API.
 
         Args:
-            endpoint: API endpoint (e.g., "/mcp/completion")
-            method: HTTP method (default: POST)
-            **kwargs: Additional arguments to pass to requests
+            endpoint: Path (e.g. ``"/mcp"``).
+            method: HTTP method.
+            **kwargs: Passed to ``httpx.Client.request``.
 
         Returns:
-            requests.Response object
-
-        Example:
-            >>> response = client.raw_request(
-            ...     "/mcp",
-            ...     json={"method": "tools/list"}
-            ... )
+            ``httpx.Response`` object.
         """
-        headers = kwargs.pop("headers", {})
-        headers["Authorization"] = f"Bearer {self.api_key}"
-
         url = f"{self.base_url}{endpoint}"
-        return requests.request(method, url, headers=headers, **kwargs)
+        return self._http.request(method, url, **kwargs)
+
+    # ------------------------------------------------------------------
+    # Internals
+    # ------------------------------------------------------------------
+
+    def _build_completion_body(
+        self,
+        messages: list,
+        username: str = "ludo",
+        conversation_id: Optional[str] = None,
+        max_tokens: int = 1000,
+        incognito: bool = False,
+        model: str = "gpt-4",
+        response_format: Optional[dict] = None,
+        **extra: Any,
+    ) -> dict:
+        body: dict = {
+            "model": model,
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "username": username,
+        }
+        if conversation_id:
+            body["conversation_id"] = conversation_id
+        if incognito:
+            body["incognito"] = incognito
+        if response_format:
+            body["response_format"] = response_format
+        body.update(extra)
+        return body
+
+    def _post(self, path: str, json_body: dict) -> dict:
+        """POST JSON and return parsed response, raising on errors."""
+        resp = self._http.post(path, json=json_body)
+        resp.raise_for_status()
+        return resp.json()
+
+    # ------------------------------------------------------------------
+    # Context manager / cleanup
+    # ------------------------------------------------------------------
+
+    def close(self) -> None:
+        """Close the underlying HTTP client."""
+        self._http.close()
+
+    def __enter__(self) -> "SuperMeClient":
+        return self
+
+    def __exit__(self, *args: Any) -> None:
+        self.close()
