@@ -1,4 +1,4 @@
-"""Tests for superme_sdk.client — SuperMeClient."""
+"""Tests for superme_sdk.client — SuperMeClient (MCP JSON-RPC transport)."""
 
 import json
 
@@ -6,26 +6,37 @@ import httpx
 import pytest
 import respx
 
-from superme_sdk.client import SuperMeClient
+from superme_sdk.client import SuperMeClient, ChatCompletion
 
-BASE = "https://api.superme.ai"
+BASE = "https://mcp.superme.ai"
 
-# Sample completion response matching the backend schema
-COMPLETION_RESPONSE = {
-    "id": "chatcmpl-abc123",
-    "object": "chat.completion",
-    "created": 1700000000,
-    "model": "gpt-4",
-    "choices": [
-        {
-            "index": 0,
-            "message": {"role": "assistant", "content": "Growth marketing is..."},
-            "finish_reason": "stop",
-        }
-    ],
-    "usage": {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
-    "metadata": {"conversation_id": "conv_123"},
+# MCP ask tool response (what the backend returns inside JSON-RPC)
+ASK_RESULT = {
+    "conversation_id": "conv_123",
+    "target_user": "ludo",
+    "target_user_id": "uid_456",
+    "question": "What is PMF?",
+    "response": "Growth marketing is...",
+    "status": "success",
 }
+
+# Full JSON-RPC 2.0 response wrapping the MCP tool call result
+MCP_TOOL_RESPONSE = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": {
+        "content": [
+            {"type": "text", "text": json.dumps(ASK_RESULT)},
+        ],
+    },
+}
+
+
+def _mock_mcp_ask():
+    """Helper to mock a POST / that returns ASK_RESULT."""
+    return respx.post(f"{BASE}/").mock(
+        return_value=httpx.Response(200, json=MCP_TOOL_RESPONSE)
+    )
 
 
 # ---- construction ----
@@ -42,20 +53,12 @@ def test_client_explicit_key():
     client.close()
 
 
-def test_client_explicit_key():
-    client = SuperMeClient(api_key="explicit")
-    assert client.token == "explicit"
-    client.close()
-
-
 # ---- ask ----
 
 
 @respx.mock
 def test_ask_returns_text():
-    respx.post(f"{BASE}/sdk/chat/completions").mock(
-        return_value=httpx.Response(200, json=COMPLETION_RESPONSE)
-    )
+    _mock_mcp_ask()
     client = SuperMeClient(api_key="tok")
     result = client.ask("What is PMF?", username="ludo")
     assert result == "Growth marketing is..."
@@ -63,26 +66,24 @@ def test_ask_returns_text():
 
 
 @respx.mock
-def test_ask_sends_correct_body():
-    route = respx.post(f"{BASE}/sdk/chat/completions").mock(
-        return_value=httpx.Response(200, json=COMPLETION_RESPONSE)
-    )
+def test_ask_sends_correct_jsonrpc_body():
+    route = _mock_mcp_ask()
     client = SuperMeClient(api_key="tok")
-    client.ask("question", username="alice", max_tokens=500, incognito=True)
+    client.ask("question", username="alice", incognito=True)
 
     body = json.loads(route.calls[0].request.content)
-    assert body["username"] == "alice"
-    assert body["max_tokens"] == 500
-    assert body["incognito"] is True
-    assert body["messages"] == [{"role": "user", "content": "question"}]
+    assert body["jsonrpc"] == "2.0"
+    assert body["method"] == "tools/call"
+    assert body["params"]["name"] == "ask"
+    assert body["params"]["arguments"]["identifier"] == "alice"
+    assert body["params"]["arguments"]["question"] == "question"
+    assert body["params"]["arguments"]["incognito"] is True
     client.close()
 
 
 @respx.mock
 def test_ask_sends_auth_header():
-    route = respx.post(f"{BASE}/sdk/chat/completions").mock(
-        return_value=httpx.Response(200, json=COMPLETION_RESPONSE)
-    )
+    route = _mock_mcp_ask()
     client = SuperMeClient(api_key="my-jwt")
     client.ask("hi", username="ludo")
 
@@ -91,14 +92,23 @@ def test_ask_sends_auth_header():
     client.close()
 
 
+@respx.mock
+def test_ask_sends_conversation_id():
+    route = _mock_mcp_ask()
+    client = SuperMeClient(api_key="tok")
+    client.ask("hi", username="ludo", conversation_id="conv_abc")
+
+    body = json.loads(route.calls[0].request.content)
+    assert body["params"]["arguments"]["conversation_id"] == "conv_abc"
+    client.close()
+
+
 # ---- ask_with_history ----
 
 
 @respx.mock
 def test_ask_with_history_returns_tuple():
-    respx.post(f"{BASE}/sdk/chat/completions").mock(
-        return_value=httpx.Response(200, json=COMPLETION_RESPONSE)
-    )
+    _mock_mcp_ask()
     client = SuperMeClient(api_key="tok")
     text, conv_id = client.ask_with_history(
         [{"role": "user", "content": "Q1"}], username="ludo"
@@ -109,57 +119,103 @@ def test_ask_with_history_returns_tuple():
 
 
 @respx.mock
-def test_ask_with_history_no_metadata():
-    resp = {**COMPLETION_RESPONSE, "metadata": None}
-    respx.post(f"{BASE}/sdk/chat/completions").mock(
-        return_value=httpx.Response(200, json=resp)
-    )
+def test_ask_with_history_extracts_last_user_message():
+    route = _mock_mcp_ask()
     client = SuperMeClient(api_key="tok")
-    text, conv_id = client.ask_with_history(
-        [{"role": "user", "content": "Q1"}], username="ludo"
+    client.ask_with_history(
+        [
+            {"role": "user", "content": "first"},
+            {"role": "assistant", "content": "reply"},
+            {"role": "user", "content": "follow-up"},
+        ],
+        username="ludo",
     )
-    assert conv_id is None
+    body = json.loads(route.calls[0].request.content)
+    assert body["params"]["arguments"]["question"] == "follow-up"
     client.close()
 
 
-# ---- chat_completions ----
+# ---- chat.completions.create ----
 
 
 @respx.mock
-def test_chat_completions_returns_dict():
-    respx.post(f"{BASE}/sdk/chat/completions").mock(
-        return_value=httpx.Response(200, json=COMPLETION_RESPONSE)
-    )
+def test_chat_completions_create_returns_object():
+    _mock_mcp_ask()
     client = SuperMeClient(api_key="tok")
-    data = client.chat_completions(
-        messages=[{"role": "user", "content": "hi"}], username="ludo"
+    response = client.chat.completions.create(
+        messages=[{"role": "user", "content": "hi"}],
+        username="ludo",
     )
-    assert isinstance(data, dict)
-    assert data["choices"][0]["message"]["content"] == "Growth marketing is..."
+    assert isinstance(response, ChatCompletion)
+    assert response.choices[0].message.content == "Growth marketing is..."
+    assert response.choices[0].message.role == "assistant"
+    assert response.metadata["conversation_id"] == "conv_123"
+    assert response.metadata["target_user"] == "ludo"
+    assert response.model == "gpt-4"
     client.close()
 
 
-# ---- raw_request ----
-
-
 @respx.mock
-def test_raw_request():
-    respx.post(f"{BASE}/mcp").mock(
-        return_value=httpx.Response(200, json={"status": "ok"})
-    )
+def test_chat_completions_create_no_user_message_raises():
     client = SuperMeClient(api_key="tok")
-    resp = client.raw_request("/mcp", json={"method": "initialize"})
-    assert resp.status_code == 200
-    assert resp.json() == {"status": "ok"}
+    with pytest.raises(ValueError, match="at least one user message"):
+        client.chat.completions.create(
+            messages=[{"role": "system", "content": "be helpful"}],
+            username="ludo",
+        )
     client.close()
 
 
-# ---- error handling ----
+# ---- mcp_tool_call ----
 
 
 @respx.mock
-def test_ask_raises_on_http_error():
-    respx.post(f"{BASE}/sdk/chat/completions").mock(
+def test_mcp_tool_call():
+    profile_result = {"name": "Ludo", "username": "ludo"}
+    respx.post(f"{BASE}/").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "result": {
+                    "content": [
+                        {"type": "text", "text": json.dumps(profile_result)},
+                    ],
+                },
+            },
+        )
+    )
+    client = SuperMeClient(api_key="tok")
+    result = client.mcp_tool_call("get_profile", {"identifier": "ludo"})
+    assert result["name"] == "Ludo"
+    client.close()
+
+
+# ---- MCP error handling ----
+
+
+@respx.mock
+def test_mcp_error_raises_runtime_error():
+    respx.post(f"{BASE}/").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "error": {"code": -32600, "message": "Invalid Request"},
+            },
+        )
+    )
+    client = SuperMeClient(api_key="tok")
+    with pytest.raises(RuntimeError, match="MCP error -32600"):
+        client.ask("hi", username="ludo")
+    client.close()
+
+
+@respx.mock
+def test_http_error_raises():
+    respx.post(f"{BASE}/").mock(
         return_value=httpx.Response(401, json={"error": "unauthorized"})
     )
     client = SuperMeClient(api_key="bad-tok")
@@ -168,14 +224,31 @@ def test_ask_raises_on_http_error():
     client.close()
 
 
+# ---- raw_request ----
+
+
+@respx.mock
+def test_raw_request():
+    tools_response = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": {"tools": [{"name": "ask", "description": "Ask a question"}]},
+    }
+    respx.post(f"{BASE}/").mock(
+        return_value=httpx.Response(200, json=tools_response)
+    )
+    client = SuperMeClient(api_key="tok")
+    result = client.raw_request("tools/list")
+    assert result["tools"][0]["name"] == "ask"
+    client.close()
+
+
 # ---- context manager ----
 
 
 @respx.mock
 def test_context_manager():
-    respx.post(f"{BASE}/sdk/chat/completions").mock(
-        return_value=httpx.Response(200, json=COMPLETION_RESPONSE)
-    )
+    _mock_mcp_ask()
     with SuperMeClient(api_key="tok") as client:
         result = client.ask("hi", username="ludo")
         assert result == "Growth marketing is..."

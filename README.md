@@ -87,25 +87,40 @@ python examples/simple_example.py
 
 ## API Reference
 
-### `SuperMeClient(api_key, base_url="https://api.superme.ai", timeout=120.0)`
+### `SuperMeClient(api_key, base_url="https://mcp.superme.ai", timeout=120.0)`
 
 | Method | Returns | Description |
 |--------|---------|-------------|
 | `ask(question, username, *, conversation_id, max_tokens, incognito)` | `str` | Ask a single question |
 | `ask_with_history(messages, username, *, conversation_id, max_tokens, incognito)` | `(str, str\|None)` | Ask with conversation history |
-| `chat_completions(messages, username, *, max_tokens, model, response_format)` | `dict` | Raw OpenAI-format response dict |
-| `raw_request(endpoint, method="POST", **kwargs)` | `httpx.Response` | Direct HTTP call to any endpoint |
+| `chat.completions.create(messages, model, *, username, conversation_id, ...)` | `ChatCompletion` | OpenAI-compatible chat completion |
+| `mcp_tool_call(tool_name, arguments)` | `dict` | Call any MCP tool by name |
+| `mcp_list_tools()` | `list[dict]` | List all available MCP tools |
+| `raw_request(method, params)` | `dict` | Raw MCP JSON-RPC request |
 
-### MCP via SDK
+### OpenAI-compatible interface
 
 ```python
-import json
+response = client.chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": "What is PLG?"}],
+    username="ludo",
+)
+print(response.choices[0].message.content)
+print(response.metadata["conversation_id"])
+```
 
-resp = client.raw_request("/mcp", json={
-    "method": "tools/call",
-    "params": {"name": "ask", "arguments": {"username": "ludo", "question": "What is PLG?"}}
-})
-result = json.loads(resp.json()["content"][0]["text"])
+### MCP tools via SDK
+
+```python
+# List available tools
+tools = client.mcp_list_tools()
+
+# Call a tool directly
+profile = client.mcp_tool_call("get_profile", {"username": "ludo"})
+
+# Raw JSON-RPC
+result = client.raw_request("tools/list")
 ```
 
 ## MCP Setup

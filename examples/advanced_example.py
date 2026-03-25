@@ -1,143 +1,61 @@
 #!/usr/bin/env python3
-"""Advanced example showing features of SuperMe SDK"""
+"""Advanced example showing more SDK features"""
 
 import os
 
+from dotenv import load_dotenv
+
 from superme_sdk import SuperMeClient
+
+load_dotenv()
 
 
 def main():
-    # Get your API key from superme.ai/settings
     api_key = os.environ["SUPERME_API_KEY"]
-    client = SuperMeClient(api_key=api_key, base_url="https://api.superme.ai")
+    client = SuperMeClient(api_key=api_key)
 
     print("SuperMe SDK Advanced Example")
     print("=" * 50)
 
-    # 1. Structured conversation with context
-    print("\n1. Building a conversation with context:")
+    # 1. Multi-turn conversation with OpenAI interface
+    print("\n1. Multi-turn conversation (OpenAI-style):")
+    messages = [{"role": "user", "content": "What is content marketing?"}]
 
-    conversation = []
+    r1 = client.chat.completions.create(model="gpt-4", messages=messages, username="ludo")
+    conv_id = r1.metadata["conversation_id"]
+    print(f"Turn 1: {r1.choices[0].message.content[:150]}...")
 
-    q1 = "Who is the founder of Y Combinator?"
-    conversation.append({"role": "user", "content": q1})
-    response1 = client.chat_completions(
-        messages=conversation, username="ludo", max_tokens=100
-    )
-    a1 = response1["choices"][0]["message"]["content"]
-    conversation.append({"role": "assistant", "content": a1})
-    print(f"Q: {q1}")
-    print(f"A: {a1}")
+    messages.append({"role": "assistant", "content": r1.choices[0].message.content})
+    messages.append({"role": "user", "content": "How does it differ from social media marketing?"})
 
-    q2 = "What companies did he help start?"
-    conversation.append({"role": "user", "content": q2})
-    response2 = client.chat_completions(
-        messages=conversation, username="ludo", max_tokens=150
-    )
-    a2 = response2["choices"][0]["message"]["content"]
-    conversation.append({"role": "assistant", "content": a2})
-    print(f"\nQ: {q2}")
-    print(f"A: {a2}")
-
-    # 2. Using raw API access
-    print("\n2. Raw API access:")
-    try:
-        raw_response = client.raw_request(
-            "/mcp", json={"method": "initialize", "params": {}}
-        )
-        print(f"Response status: {raw_response.status_code}")
-
-        if raw_response.status_code == 200:
-            if raw_response.text.strip():
-                print(f"MCP initialize response: {raw_response.json()}")
-            else:
-                print("MCP endpoint returned empty response")
-        else:
-            print(f"Request failed with status {raw_response.status_code}")
-    except Exception as e:
-        print(f"Error making raw request: {e}")
-
-    # 3. Different user profiles
-    print("\n3. Querying different user profiles:")
-    usernames = ["ludo", "casey"]
-    question = "What are your areas of expertise?"
-
-    for username in usernames:
-        answer = client.ask(question, username=username, max_tokens=100)
-        print(f"\nUser {username}: {answer[:150]}...")
-
-    # 4. Structured responses with JSON schema
-    print("\n4. Structured responses with JSON schema:")
-
-    user_profile_schema = {
-        "type": "json_schema",
-        "json_schema": {
-            "name": "user_profile",
-            "schema": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string"},
-                    "expertise": {"type": "array", "items": {"type": "string"}},
-                    "location": {"type": "string"},
-                },
-                "required": ["name", "expertise", "location"],
-            },
-            "strict": True,
-        },
-    }
-
-    profile_response = client.chat_completions(
-        messages=[
-            {
-                "role": "user",
-                "content": "Create a user profile for a 28-year-old marketing expert named Sarah from San Francisco with expertise in growth hacking, content marketing, and social media",
-            }
-        ],
+    r2 = client.chat.completions.create(
+        model="gpt-4",
+        messages=messages,
         username="ludo",
-        max_tokens=200,
-        response_format=user_profile_schema,
+        conversation_id=conv_id,
     )
-    print(f"Structured profile:\n{profile_response['choices'][0]['message']['content']}")
+    print(f"Turn 2: {r2.choices[0].message.content[:150]}...")
 
-    # 5. Custom dict schema
-    print("\n5. Custom dict schema:")
-    tactics_schema = {
-        "type": "json_schema",
-        "json_schema": {
-            "name": "marketing_tactics",
-            "schema": {
-                "type": "object",
-                "properties": {
-                    "tactics": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "name": {"type": "string"},
-                                "description": {"type": "string"},
-                                "priority": {"type": "integer"},
-                            },
-                            "required": ["name", "description", "priority"],
-                        },
-                    }
-                },
-                "required": ["tactics"],
-            },
-        },
-    }
+    # 2. MCP tools - list available tools
+    print("\n2. List MCP tools:")
+    tools = client.mcp_list_tools()
+    for tool in tools:
+        print(f"  - {tool['name']}: {tool.get('description', '')[:60]}")
 
-    tactics_response = client.chat_completions(
-        messages=[
-            {
-                "role": "user",
-                "content": "List 3 growth marketing tactics with descriptions and priority levels",
-            }
-        ],
-        username="ludo",
-        max_tokens=400,
-        response_format=tactics_schema,
-    )
-    print(f"Custom schema response:\n{tactics_response['choices'][0]['message']['content']}")
+    # 3. MCP tool call - find a user
+    print("\n3. Find user by name:")
+    result = client.mcp_tool_call("find_user_by_name", {"name": "ludo"})
+    print(f"  Result: {result[:200]}")
+
+    # 4. MCP tool call - get profile
+    print("\n4. Get profile:")
+    profile = client.mcp_tool_call("get_profile", {"username": "ludo"})
+    print(f"  Profile: {profile[:200]}")
+
+    # 5. List conversations
+    print("\n5. List conversations:")
+    conversations = client.mcp_tool_call("list_conversations", {"username": "ludo"})
+    print(f"  Conversations: {conversations[:200]}")
 
     print("\nAdvanced example completed!")
 
