@@ -68,10 +68,74 @@ messages.append({"role": "user", "content": "How do you measure it?"})
 response2, _ = client.ask_with_history(messages, username="ludo", conversation_id=conv_id)
 ```
 
+## CLI
+
+The `superme` CLI is installed alongside the SDK.
+
+```bash
+# Auth
+superme login --token KEY
+superme logout
+superme status
+
+# Conversations
+superme ask "What is PLG?" --username ludo
+superme chat --username ludo                  # interactive multi-turn
+superme ask-agent "Summarize my recent notes"
+superme conversations --limit 5
+superme conversation <conversation_id>
+
+# Users
+superme profile ludo
+superme profile                               # your own profile
+superme find-user "casey" --limit 5
+
+# Search
+superme search "What makes a great onboarding flow?"
+
+# Content
+superme add-content "PLG reduces CAC by 60%" "Source: Q4 analysis"
+superme add-urls https://example.com/article1 https://example.com/article2
+superme check-urls https://example.com/post-1 https://example.com/post-2
+
+# Low-level MCP (advanced)
+superme mcp-tools
+superme mcp-call get_profile --args '{"identifier":"ludo"}'
+```
+
+Run `superme --help` or `superme <command> --help` for usage details.
+
+Token is stored at `~/.config/superme/token` and can be overridden with `SUPERME_API_KEY`.
+
+## Dev Setup
+
+```bash
+git clone https://github.com/superme-ai/superme-sdk.git
+cd superme-sdk
+pip install -e ".[dev]"
+```
+
+Run CLI directly from source:
+```bash
+superme --help          # entry point registered by pip install -e .
+python -m superme_sdk.cli ask "hello" --username ludo  # without install
+```
+
+Run tests:
+```bash
+pytest                  # all tests
+pytest tests/test_cli.py -v
+pytest --cov=superme_sdk
+```
+
 ## Running Examples
 
 ```bash
+# Option 1 — env var
 export SUPERME_API_KEY=your_api_key_here
+
+# Option 2 — .env file (python-dotenv is included by default)
+cp .env.example .env   # fill in your key
 
 python examples/simple_example.py
 python examples/advanced_example.py
@@ -91,9 +155,20 @@ python examples/simple_example.py
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `ask(question, username, *, conversation_id, max_tokens, incognito)` | `str` | Ask a single question |
-| `ask_with_history(messages, username, *, conversation_id, max_tokens, incognito)` | `(str, str\|None)` | Ask with conversation history |
-| `chat.completions.create(messages, model, *, username, conversation_id, ...)` | `ChatCompletion` | OpenAI-compatible chat completion |
+| `ask(question, username, ...)` | `str` | Ask a question about a user |
+| `ask_with_history(messages, username, ...)` | `(str, str\|None)` | Ask with conversation history |
+| `ask_my_agent(question, *, conversation_id)` | `dict` | Talk to your own SuperMe AI |
+| `list_conversations(*, limit)` | `list[dict]` | List recent conversations |
+| `get_conversation(conversation_id)` | `dict` | Get conversation with messages |
+| `get_profile(identifier)` | `dict` | Get user profile |
+| `find_user_by_name(name, *, limit)` | `dict` | Search users by name |
+| `find_users_by_names(names, *, limit_per_name)` | `dict` | Batch resolve names to users |
+| `perspective_search(question)` | `dict` | Get multi-expert perspectives |
+| `add_internal_content(input, ...)` | `dict` | Add notes to your library |
+| `update_internal_content(learning_id, ...)` | `dict` | Update a library note |
+| `add_external_content(urls, ...)` | `dict` | Add URLs to knowledge base |
+| `check_uncrawled_urls(urls)` | `dict` | Check which URLs are unindexed |
+| `chat.completions.create(messages, model, ...)` | `ChatCompletion` | OpenAI-compatible interface |
 | `mcp_tool_call(tool_name, arguments)` | `dict` | Call any MCP tool by name |
 | `mcp_list_tools()` | `list[dict]` | List all available MCP tools |
 | `raw_request(method, params)` | `dict` | Raw MCP JSON-RPC request |
