@@ -27,9 +27,9 @@ def main():
     print("\n2. Ask via MCP tool call:")
     answer = client.mcp_tool_call(
         "ask",
-        {"question": "What is growth marketing?", "username": "ludo"},
+        {"question": "What is growth marketing?", "identifier": "ludo"},
     )
-    print(f"  Answer: {answer[:200]}")
+    print(f"  Answer: {str(answer)[:200]}")
 
     # 3. Raw JSON-RPC request (tools/list)
     print("\n3. Raw JSON-RPC request (tools/list):")
@@ -41,7 +41,7 @@ def main():
     print("\n4. Raw JSON-RPC request (tools/call):")
     raw2 = client.raw_request(
         "tools/call",
-        {"name": "get_profile", "arguments": {"username": "ludo"}},
+        {"name": "get_profile", "arguments": {"identifier": "ludo"}},
     )
     print(f"  Raw result: {str(raw2)[:200]}")
 

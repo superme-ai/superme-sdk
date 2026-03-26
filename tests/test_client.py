@@ -527,3 +527,62 @@ def test_live_mcp_tool_call(live_client, live_username):
     })
     assert isinstance(result, dict)
     assert "response" in result
+
+
+@pytest.mark.live
+def test_live_list_conversations(live_client):
+    result = live_client.list_conversations(limit=3)
+    assert isinstance(result, (list, dict))
+
+
+@pytest.mark.live
+def test_live_get_conversation(live_client):
+    convs = live_client.list_conversations(limit=1)
+    if not convs:
+        pytest.skip("No conversations to fetch")
+    conv_id = convs[0].get("conversation_id") or convs[0].get("id")
+    result = live_client.get_conversation(conv_id)
+    assert isinstance(result, (dict, list))
+
+
+@pytest.mark.live
+def test_live_ask_my_agent(live_client):
+    result = live_client.ask_my_agent("Say hi")
+    assert isinstance(result, dict)
+    assert "response" in result
+
+
+@pytest.mark.live
+def test_live_get_profile(live_client, live_username):
+    result = live_client.get_profile(live_username)
+    assert isinstance(result, (dict, list))
+
+
+@pytest.mark.live
+def test_live_get_profile_self(live_client):
+    result = live_client.get_profile()
+    assert isinstance(result, (dict, list))
+
+
+@pytest.mark.live
+def test_live_find_user_by_name(live_client, live_username):
+    result = live_client.find_user_by_name(live_username, limit=3)
+    assert isinstance(result, (list, dict))
+
+
+@pytest.mark.live
+def test_live_find_users_by_names(live_client, live_username):
+    result = live_client.find_users_by_names([live_username], limit_per_name=2)
+    assert isinstance(result, (list, dict))
+
+
+@pytest.mark.live
+def test_live_perspective_search(live_client):
+    result = live_client.perspective_search("What is product-market fit?")
+    assert isinstance(result, (dict, list))
+
+
+@pytest.mark.live
+def test_live_check_uncrawled_urls(live_client):
+    result = live_client.check_uncrawled_urls(["https://example.com/does-not-exist-xyz"])
+    assert isinstance(result, (dict, list))

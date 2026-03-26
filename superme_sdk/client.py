@@ -590,7 +590,10 @@ class SuperMeClient:
         text = content_list[0].get("text", "").strip()
         if not text:
             return {}
-        return json.loads(text)
+        # raw_decode parses the first valid JSON value and ignores any
+        # trailing content — guards against 'Extra data' responses.
+        obj, _ = json.JSONDecoder().raw_decode(text)
+        return obj
 
     @staticmethod
     def _parse_sse_json(text: str) -> dict:
