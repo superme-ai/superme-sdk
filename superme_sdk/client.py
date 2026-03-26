@@ -321,7 +321,10 @@ class SuperMeClient:
         Returns:
             List of conversation summary dicts.
         """
-        return self._mcp_tool_call("list_conversations", {"limit": limit})
+        result = self._mcp_tool_call("list_conversations", {"limit": limit})
+        if isinstance(result, list):
+            return result
+        return []
 
     def get_conversation(self, conversation_id: str) -> dict:
         """Fetch full details of a single conversation, including all messages.
@@ -579,17 +582,23 @@ class SuperMeClient:
         return body.get("result", {})
 
     def _mcp_tool_call(self, tool_name: str, arguments: dict) -> Any:
-        """Call an MCP tool and return the parsed JSON content."""
+        """Call an MCP tool and return the parsed JSON content.
+
+        Returns ``None`` when the server sends no content, so callers can
+        apply a type-appropriate default (e.g. ``[]`` for lists, ``{}``
+        for dicts).
+        """
         result = self._mcp_request(
             "tools/call",
             {"name": tool_name, "arguments": arguments},
         )
         content_list = result.get("content", [])
         if not content_list:
-            return {}
-        text = content_list[0].get("text", "").strip()
+            return None
+        # Use ``or ""`` so a None value doesn't raise AttributeError on .strip()
+        text = (content_list[0].get("text") or "").strip()
         if not text:
-            return {}
+            return None
         # raw_decode parses the first valid JSON value and ignores any
         # trailing content — guards against 'Extra data' responses.
         obj, _ = json.JSONDecoder().raw_decode(text)

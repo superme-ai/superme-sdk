@@ -268,6 +268,73 @@ def _mock_tool(result: dict):
     )
 
 
+def _mock_empty_content():
+    """Helper: mock an MCP response with empty content list."""
+    return respx.post(f"{BASE}/").mock(
+        return_value=httpx.Response(
+            200,
+            json={"jsonrpc": "2.0", "id": 1, "result": {"content": []}},
+        )
+    )
+
+
+def _mock_null_text():
+    """Helper: mock an MCP response where text field is None."""
+    return respx.post(f"{BASE}/").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "result": {"content": [{"type": "text", "text": None}]},
+            },
+        )
+    )
+
+
+# ---- _mcp_tool_call edge cases ----
+
+
+@respx.mock
+def test_mcp_tool_call_empty_content_returns_none():
+    _mock_empty_content()
+    client = SuperMeClient(api_key="tok")
+    result = client.mcp_tool_call("anything", {})
+    assert result is None
+    client.close()
+
+
+@respx.mock
+def test_mcp_tool_call_null_text_returns_none():
+    """text=None must not raise AttributeError on .strip()."""
+    _mock_null_text()
+    client = SuperMeClient(api_key="tok")
+    result = client.mcp_tool_call("anything", {})
+    assert result is None
+    client.close()
+
+
+@respx.mock
+def test_list_conversations_empty_content_returns_empty_list():
+    """list_conversations must return [] not {} when content is empty."""
+    _mock_empty_content()
+    client = SuperMeClient(api_key="tok")
+    result = client.list_conversations()
+    assert result == []
+    assert isinstance(result, list)
+    client.close()
+
+
+@respx.mock
+def test_list_conversations_null_text_returns_empty_list():
+    """list_conversations must return [] not raise when text is None."""
+    _mock_null_text()
+    client = SuperMeClient(api_key="tok")
+    result = client.list_conversations()
+    assert result == []
+    client.close()
+
+
 # ---- list_conversations ----
 
 
@@ -540,7 +607,10 @@ def test_live_get_conversation(live_client):
     convs = live_client.list_conversations(limit=1)
     if not convs:
         pytest.skip("No conversations to fetch")
+    # list_conversations always returns list[dict] — safe to index
     conv_id = convs[0].get("conversation_id") or convs[0].get("id")
+    if not conv_id:
+        pytest.skip("Conversation has no id field")
     result = live_client.get_conversation(conv_id)
     assert isinstance(result, (dict, list))
 
