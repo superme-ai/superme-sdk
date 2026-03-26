@@ -104,6 +104,18 @@ class Completions:
             )
             print(response.choices[0].message.content)
         """
+        # Backward-compat: pre-hardening callers used extra_body={"username": ...}
+        # to pass routing params through the OpenAI-compatible interface.
+        # Extract any recognised fields from extra_body and let them override
+        # the direct kwargs so old call sites keep working without changes.
+        extra_body: dict = kwargs.pop("extra_body", {}) or {}
+        if "username" in extra_body:
+            username = extra_body["username"]
+        if "incognito" in extra_body:
+            incognito = extra_body["incognito"]
+        if "conversation_id" in extra_body:
+            conversation_id = extra_body["conversation_id"]
+
         # Extract the last user message as the question
         question = ""
         for msg in reversed(messages):
