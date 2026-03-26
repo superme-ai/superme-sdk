@@ -113,7 +113,7 @@ class Completions:
             username = extra_body["username"]
         if "incognito" in extra_body:
             incognito = extra_body["incognito"]
-        if "conversation_id" in extra_body and conversation_id is None:
+        if "conversation_id" in extra_body:
             conversation_id = extra_body["conversation_id"]
 
         # Extract the last user message as the question
