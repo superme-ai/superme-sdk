@@ -73,7 +73,7 @@ class Completions:
         messages: list,
         model: str = "gpt-4",
         *,
-        username: str = "ludo",
+        username: str,
         conversation_id: Optional[str] = None,
         max_tokens: int = 1000,
         incognito: bool = False,
@@ -235,7 +235,7 @@ class SuperMeClient:
     def ask(
         self,
         question: str,
-        username: str = "ludo",
+        username: str,
         conversation_id: Optional[str] = None,
         max_tokens: int = 1000,
         incognito: bool = False,
@@ -266,7 +266,7 @@ class SuperMeClient:
     def ask_with_history(
         self,
         messages: list,
-        username: str = "ludo",
+        username: str,
         conversation_id: Optional[str] = None,
         max_tokens: int = 1000,
         incognito: bool = False,
