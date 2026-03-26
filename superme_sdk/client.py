@@ -299,26 +299,215 @@ class SuperMeClient:
     # MCP tool helpers
     # ------------------------------------------------------------------
 
-    def mcp_tool_call(self, tool_name: str, arguments: dict) -> dict:
-        """Call any MCP tool by name and return the parsed result.
-
-        Args:
-            tool_name: MCP tool name (e.g. ``"get_profile"``).
-            arguments: Tool arguments dict.
-
-        Returns:
-            Parsed JSON dict from the tool's response content.
-        """
+    def mcp_tool_call(self, tool_name: str, arguments: dict) -> Any:
+        """Call any MCP tool by name and return the parsed result."""
         return self._mcp_tool_call(tool_name, arguments)
 
     def mcp_list_tools(self) -> list[dict]:
-        """List all available MCP tools.
-
-        Returns:
-            List of tool definitions.
-        """
+        """List all available MCP tools."""
         data = self._mcp_request("tools/list", {})
         return data.get("tools", [])
+
+    # ------------------------------------------------------------------
+    # Conversations
+    # ------------------------------------------------------------------
+
+    def list_conversations(self, *, limit: int = 20) -> list[dict]:
+        """Return the authenticated user's most recent conversations.
+
+        Args:
+            limit: Maximum number of conversations to return.
+
+        Returns:
+            List of conversation summary dicts.
+        """
+        return self._mcp_tool_call("list_conversations", {"limit": limit})
+
+    def get_conversation(self, conversation_id: str) -> dict:
+        """Fetch full details of a single conversation, including all messages.
+
+        Args:
+            conversation_id: The conversation ID (from list_conversations).
+
+        Returns:
+            Conversation dict with metadata and message history.
+        """
+        return self._mcp_tool_call(
+            "get_conversation", {"conversation_id": conversation_id}
+        )
+
+    def ask_my_agent(
+        self,
+        question: str,
+        *,
+        conversation_id: Optional[str] = None,
+    ) -> dict:
+        """Talk to your own SuperMe AI agent.
+
+        Args:
+            question: Your message to the agent.
+            conversation_id: Continue an existing conversation.
+
+        Returns:
+            Dict with ``response`` and ``conversation_id``.
+        """
+        args: dict[str, Any] = {"question": question}
+        if conversation_id:
+            args["conversation_id"] = conversation_id
+        return self._mcp_tool_call("ask_my_agent", args)
+
+    # ------------------------------------------------------------------
+    # Users
+    # ------------------------------------------------------------------
+
+    def get_profile(self, identifier: Optional[str] = None) -> dict:
+        """Return public profile info for a user.
+
+        Args:
+            identifier: User ID, username, or full name. Omit for your own profile.
+
+        Returns:
+            Profile dict.
+        """
+        args: dict[str, Any] = {}
+        if identifier:
+            args["identifier"] = identifier
+        return self._mcp_tool_call("get_profile", args)
+
+    def find_user_by_name(self, name: str, *, limit: int = 10) -> dict:
+        """Search for SuperMe users by name.
+
+        Args:
+            name: Full or partial name to search for.
+            limit: Maximum results to return.
+
+        Returns:
+            Dict with match results.
+        """
+        return self._mcp_tool_call(
+            "find_user_by_name", {"name": name, "limit": limit}
+        )
+
+    def find_users_by_names(
+        self, names: list[str], *, limit_per_name: int = 10
+    ) -> dict:
+        """Resolve multiple names to SuperMe users in a single call.
+
+        Args:
+            names: List of names to look up.
+            limit_per_name: Maximum matches per name.
+
+        Returns:
+            Dict with per-name matches and resolved_user_ids map.
+        """
+        return self._mcp_tool_call(
+            "find_users_by_names",
+            {"names": names, "limit_per_name": limit_per_name},
+        )
+
+    # ------------------------------------------------------------------
+    # Search
+    # ------------------------------------------------------------------
+
+    def perspective_search(self, question: str) -> dict:
+        """Get perspectives from multiple experts on a topic.
+
+        Args:
+            question: A topic or question to get expert takes on.
+
+        Returns:
+            Dict with synthesized answer and individual viewpoints.
+        """
+        return self._mcp_tool_call("perspective_search", {"question": question})
+
+    # ------------------------------------------------------------------
+    # Content
+    # ------------------------------------------------------------------
+
+    def add_internal_content(
+        self,
+        input: list[str],
+        *,
+        extended_content: Optional[str] = None,
+        past_instructions: Optional[str] = None,
+    ) -> dict:
+        """Save notes or knowledge to your personal library.
+
+        Args:
+            input: Text blocks to save.
+            extended_content: Optional longer-form content.
+            past_instructions: Instructions for how the AI should use this content.
+
+        Returns:
+            Dict with success status and learning IDs.
+        """
+        args: dict[str, Any] = {"input": input}
+        if extended_content is not None:
+            args["extended_content"] = extended_content
+        if past_instructions is not None:
+            args["past_instructions"] = past_instructions
+        return self._mcp_tool_call("add_internal_content", args)
+
+    def update_internal_content(
+        self,
+        learning_id: str,
+        *,
+        user_input: Optional[list[str]] = None,
+        extended_content: Optional[str] = None,
+        past_instructions: Optional[str] = None,
+    ) -> dict:
+        """Update an existing note in your library.
+
+        Args:
+            learning_id: The learning ID to update.
+            user_input: Replacement note content.
+            extended_content: Replacement long-form content.
+            past_instructions: Replacement AI usage instructions.
+
+        Returns:
+            Dict with update result.
+        """
+        args: dict[str, Any] = {"learning_id": learning_id}
+        if user_input is not None:
+            args["user_input"] = user_input
+        if extended_content is not None:
+            args["extended_content"] = extended_content
+        if past_instructions is not None:
+            args["past_instructions"] = past_instructions
+        return self._mcp_tool_call("update_internal_content", args)
+
+    def add_external_content(
+        self,
+        urls: list[dict],
+        *,
+        reference: bool = True,
+        instant_recrawl: bool = True,
+    ) -> dict:
+        """Submit URLs to be crawled and added to your knowledge base.
+
+        Args:
+            urls: List of URL objects. Each must have a ``"url"`` key.
+            reference: Show citations from this content in AI answers.
+            instant_recrawl: Crawl immediately vs. queue.
+
+        Returns:
+            Dict with counts of successful, existing, and failed URLs.
+        """
+        return self._mcp_tool_call(
+            "add_external_content",
+            {"urls": urls, "reference": reference, "instant_recrawl": instant_recrawl},
+        )
+
+    def check_uncrawled_urls(self, urls: list[str]) -> dict:
+        """Check which URLs are not yet in your knowledge base.
+
+        Args:
+            urls: URLs to check.
+
+        Returns:
+            Dict with ``uncrawled_urls`` list and counts.
+        """
+        return self._mcp_tool_call("check_uncrawled_urls", {"urls": urls})
 
     # ------------------------------------------------------------------
     # Raw request helpers
@@ -389,7 +578,7 @@ class SuperMeClient:
             )
         return body.get("result", {})
 
-    def _mcp_tool_call(self, tool_name: str, arguments: dict) -> dict:
+    def _mcp_tool_call(self, tool_name: str, arguments: dict) -> Any:
         """Call an MCP tool and return the parsed JSON content."""
         result = self._mcp_request(
             "tools/call",
@@ -399,13 +588,10 @@ class SuperMeClient:
         content_list = result.get("content", [])
         if not content_list:
             return {}
-        text = content_list[0].get("text", "{}")
-        parsed = json.loads(text)
-        if not isinstance(parsed, dict):
-            raise TypeError(
-                f"Expected MCP tool to return a JSON object, got {type(parsed).__name__}"
-            )
-        return parsed
+        text = content_list[0].get("text", "").strip()
+        if not text:
+            return {}
+        return json.loads(text)
 
     @staticmethod
     def _parse_sse_json(text: str) -> dict:
