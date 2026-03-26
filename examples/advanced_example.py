@@ -45,17 +45,17 @@ def main():
     # 3. MCP tool call - find a user
     print("\n3. Find user by name:")
     result = client.mcp_tool_call("find_user_by_name", {"name": "ludo"})
-    print(f"  Result: {result[:200]}")
+    print(f"  Result: {str(result)[:200]}")
 
     # 4. MCP tool call - get profile
     print("\n4. Get profile:")
-    profile = client.mcp_tool_call("get_profile", {"username": "ludo"})
-    print(f"  Profile: {profile[:200]}")
+    profile = client.mcp_tool_call("get_profile", {"identifier": "ludo"})
+    print(f"  Profile: {str(profile)[:200]}")
 
     # 5. List conversations
     print("\n5. List conversations:")
-    conversations = client.mcp_tool_call("list_conversations", {"username": "ludo"})
-    print(f"  Conversations: {conversations[:200]}")
+    conversations = client.mcp_tool_call("list_conversations", {"limit": 5})
+    print(f"  Conversations: {str(conversations)[:200]}")
 
     print("\nAdvanced example completed!")
 
