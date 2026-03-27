@@ -466,6 +466,8 @@ class SuperMeClient:
                 if result:
                     yield result.get("response", "")
                     yield {"conversation_id": result.get("conversation_id"), "_done": True}
+                else:
+                    yield {"conversation_id": None, "_done": True}
                 return
 
             # SSE streaming: yield deltas between progressive responses
