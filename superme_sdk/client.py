@@ -73,7 +73,7 @@ class Completions:
         messages: list,
         model: str = "gpt-4",
         *,
-        username: str,
+        username: Optional[str] = None,
         conversation_id: Optional[str] = None,
         max_tokens: int = 1000,
         incognito: bool = False,
@@ -115,6 +115,11 @@ class Completions:
             incognito = extra_body["incognito"]
         if "conversation_id" in extra_body:
             conversation_id = extra_body["conversation_id"]
+
+        if not username:
+            raise ValueError(
+                "username is required: pass username= directly or via extra_body={'username': ...}"
+            )
 
         # Extract the last user message as the question
         question = ""
