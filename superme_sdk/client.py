@@ -201,18 +201,30 @@ class SuperMeClient:
         self,
         api_key: str,
         base_url: str = "https://mcp.superme.ai",
+        rest_base_url: str = "https://www.superme.ai",
         timeout: float = 120.0,
     ):
         if not api_key:
             raise ValueError("api_key is required")
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
+        self.rest_base_url = rest_base_url.rstrip("/")
+        _auth_headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        }
         self._http = httpx.Client(
             base_url=self.base_url,
+            headers=_auth_headers,
+            timeout=timeout,
+            follow_redirects=True,
+        )
+        self._rest_http = httpx.Client(
+            base_url=self.rest_base_url,
             headers={
                 "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-                "Accept": "application/json, text/event-stream",
+                "Accept": "application/json",
             },
             timeout=timeout,
         )
@@ -227,6 +239,18 @@ class SuperMeClient:
     def token(self) -> str:
         """Current API token."""
         return self.api_key
+
+    @property
+    def user_id(self) -> Optional[str]:
+        """Extract user_id from the JWT token payload."""
+        try:
+            import base64
+            parts = self.api_key.split(".")
+            padded = parts[1] + "=" * (-len(parts[1]) % 4)
+            data = json.loads(base64.urlsafe_b64decode(padded))
+            return data.get("user_id")
+        except Exception:
+            return None
 
     # ------------------------------------------------------------------
     # High-level helpers
@@ -319,6 +343,397 @@ class SuperMeClient:
         """
         data = self._mcp_request("tools/list", {})
         return data.get("tools", [])
+
+    # ------------------------------------------------------------------
+    # Conversations
+    # ------------------------------------------------------------------
+
+    def list_conversations(self, *, limit: int = 20) -> list[dict]:
+        """Return the authenticated user's most recent conversations.
+
+        Args:
+            limit: Maximum number of conversations to return.
+
+        Returns:
+            List of conversation summary dicts.
+        """
+        result = self._mcp_tool_call("list_conversations", {"limit": limit})
+        conversations = result.get("conversations", [])
+        return conversations if isinstance(conversations, list) else []
+
+    def get_conversation(self, conversation_id: str) -> dict:
+        """Fetch full details of a single conversation, including all messages.
+
+        Args:
+            conversation_id: The conversation ID (from list_conversations).
+
+        Returns:
+            Conversation dict with metadata and message history.
+        """
+        return self._mcp_tool_call(
+            "get_conversation", {"conversation_id": conversation_id}
+        )
+
+    @property
+    def _is_stream_endpoint(self) -> bool:
+        """True when base_url points to the direct stream endpoint (not MCP JSON-RPC)."""
+        return "/mcp/chat/stream" in self.base_url
+
+    def ask_my_agent_stream(
+        self,
+        question: str,
+        *,
+        conversation_id: Optional[str] = None,
+    ):
+        """Stream a response from your SuperMe AI agent.
+
+        Yields string chunks as they arrive from the server via SSE.
+        The last item is always a dict
+        ``{"conversation_id": ..., "_done": True}`` so callers can capture
+        the conversation ID without a second call.
+        """
+        # if self._is_stream_endpoint:
+        yield from self._stream_direct(question, conversation_id=conversation_id)
+        # else:
+        #     yield from self._stream_mcp(question, conversation_id=conversation_id)
+
+    def _stream_direct(
+        self,
+        question: str,
+        *,
+        conversation_id: Optional[str] = None,
+    ):
+        """Stream via the direct /mcp/chat/stream endpoint."""
+        payload: dict[str, Any] = {"question": question}
+        if conversation_id:
+            payload["conversation_id"] = conversation_id
+
+        # Extract user_id from JWT token payload
+        try:
+            import base64
+            parts = self.api_key.split(".")
+            padded = parts[1] + "=" * (-len(parts[1]) % 4)
+            token_data = json.loads(base64.urlsafe_b64decode(padded))
+            payload["user_id"] = token_data.get("user_id", "")
+        except Exception:
+            pass
+
+        conv_id_out: Optional[str] = conversation_id
+
+        # Disable compression so chunks arrive unbuffered
+        with self._http.stream(
+            "POST", "/mcp/chat/stream", json=payload,
+            headers={"Accept-Encoding": "identity"},
+        ) as resp:
+            resp.raise_for_status()
+
+            buf = ""
+            for raw_chunk in resp.iter_text():
+                buf += raw_chunk
+                while "\n" in buf:
+                    line, buf = buf.split("\n", 1)
+                    line = line.strip()
+                    if not line:
+                        continue
+                    # Strip SSE "data: " prefix if present
+                    if line.startswith("data: "):
+                        line = line[6:]
+                    elif line.startswith("data:"):
+                        line = line[5:]
+                    try:
+                        obj = json.loads(line)
+                    except (json.JSONDecodeError, ValueError):
+                        yield line
+                        continue
+                    if not isinstance(obj, dict):
+                        continue
+                    msg_type = obj.get("type", "")
+                    metadata = obj.get("metadata") or {}
+                    if msg_type == "session_info":
+                        conv_id_out = metadata.get("session_id") or conv_id_out
+                    elif msg_type == "content":
+                        text = obj.get("content", "")
+                        if text:
+                            yield text
+                    elif msg_type == "done":
+                        pass
+
+        yield {"conversation_id": conv_id_out, "_done": True}
+
+    def _stream_mcp(
+        self,
+        question: str,
+        *,
+        conversation_id: Optional[str] = None,
+    ):
+        """Stream via the MCP JSON-RPC endpoint."""
+        args: dict[str, Any] = {"question": question}
+        if conversation_id:
+            args["conversation_id"] = conversation_id
+
+        payload = {
+            "jsonrpc": "2.0",
+            "id": self._next_rpc_id(),
+            "method": "tools/call",
+            "params": {"name": "ask_my_agent", "arguments": args},
+        }
+
+        with self._http.stream("POST", "/", json=payload) as resp:
+            resp.raise_for_status()
+            ct = resp.headers.get("content-type", "")
+
+            # Non-SSE fallback: yield full response at once
+            if "text/event-stream" not in ct:
+                resp.read()
+                body = resp.json()
+                if "error" in body:
+                    err = body["error"]
+                    raise RuntimeError(
+                        f"MCP error {err.get('code', '?')}: {err.get('message', str(err))}"
+                    )
+                result = self._extract_tool_result(body.get("result", {}))
+                if result:
+                    yield result.get("response", "")
+                    yield {"conversation_id": result.get("conversation_id"), "_done": True}
+                else:
+                    yield {"conversation_id": None, "_done": True}
+                return
+
+            # SSE streaming: yield deltas between progressive responses
+            current_block: list[str] = []
+            prev_text = ""
+            conv_id_out: Optional[str] = None
+
+            for raw_line in resp.iter_lines():
+                if raw_line.startswith("data: "):
+                    current_block.append(raw_line[6:])
+                elif raw_line.startswith("data:"):
+                    current_block.append(raw_line[5:])
+                elif raw_line == "" and current_block:
+                    try:
+                        obj = json.loads("".join(current_block))
+                    except (json.JSONDecodeError, ValueError):
+                        current_block = []
+                        continue
+                    if "error" in obj:
+                        err = obj["error"]
+                        raise RuntimeError(
+                            f"MCP error {err.get('code', '?')}: {err.get('message', str(err))}"
+                        )
+                    if "result" in obj:
+                        result = self._extract_tool_result(obj["result"])
+                        if result:
+                            conv_id_out = result.get("conversation_id") or conv_id_out
+                            full_text = result.get("response", "")
+                            if len(full_text) > len(prev_text):
+                                yield full_text[len(prev_text):]
+                                prev_text = full_text
+                    current_block = []
+
+            # Handle trailing block without a final blank line
+            if current_block:
+                try:
+                    obj = json.loads("".join(current_block))
+                    if "result" in obj:
+                        result = self._extract_tool_result(obj["result"])
+                        if result:
+                            conv_id_out = result.get("conversation_id") or conv_id_out
+                            full_text = result.get("response", "")
+                            if len(full_text) > len(prev_text):
+                                yield full_text[len(prev_text):]
+                except (json.JSONDecodeError, ValueError):
+                    pass
+
+            if prev_text or conv_id_out:
+                yield {"conversation_id": conv_id_out, "_done": True}
+
+    @staticmethod
+    def _extract_tool_result(result: dict) -> Optional[dict]:
+        """Parse the JSON payload from an MCP tool result content block."""
+        content_list = result.get("content", [])
+        if not content_list:
+            return None
+        text = (content_list[0].get("text") or "").strip()
+        if not text:
+            return None
+        try:
+            obj, _ = json.JSONDecoder().raw_decode(text)
+            return obj if isinstance(obj, dict) else None
+        except (json.JSONDecodeError, ValueError):
+            return None
+
+    def ask_my_agent(
+        self,
+        question: str,
+        *,
+        conversation_id: Optional[str] = None,
+    ) -> dict:
+        """Talk to your own SuperMe AI agent.
+
+        Args:
+            question: Your message to the agent.
+            conversation_id: Continue an existing conversation.
+
+        Returns:
+            Dict with ``response`` and ``conversation_id``.
+        """
+        args: dict[str, Any] = {"question": question}
+        if conversation_id:
+            args["conversation_id"] = conversation_id
+        return self._mcp_tool_call("ask_my_agent", args)
+
+    # ------------------------------------------------------------------
+    # Users
+    # ------------------------------------------------------------------
+
+    def get_profile(self, identifier: Optional[str] = None) -> dict:
+        """Return public profile info for a user.
+
+        Args:
+            identifier: User ID, username, or full name. Omit for your own profile.
+
+        Returns:
+            Profile dict.
+        """
+        args: dict[str, Any] = {}
+        if identifier:
+            args["identifier"] = identifier
+        return self._mcp_tool_call("get_profile", args)
+
+    def find_user_by_name(self, name: str, *, limit: int = 10) -> dict:
+        """Search for SuperMe users by name.
+
+        Args:
+            name: Full or partial name to search for.
+            limit: Maximum results to return.
+
+        Returns:
+            Dict with match results.
+        """
+        return self._mcp_tool_call(
+            "find_user_by_name", {"name": name, "limit": limit}
+        )
+
+    def find_users_by_names(
+        self, names: list[str], *, limit_per_name: int = 10
+    ) -> dict:
+        """Resolve multiple names to SuperMe users in a single call.
+
+        Args:
+            names: List of names to look up.
+            limit_per_name: Maximum matches per name.
+
+        Returns:
+            Dict with per-name matches and resolved_user_ids map.
+        """
+        return self._mcp_tool_call(
+            "find_users_by_names",
+            {"names": names, "limit_per_name": limit_per_name},
+        )
+
+    # ------------------------------------------------------------------
+    # Search
+    # ------------------------------------------------------------------
+
+    def perspective_search(self, question: str) -> dict:
+        """Get perspectives from multiple experts on a topic.
+
+        Args:
+            question: A topic or question to get expert takes on.
+
+        Returns:
+            Dict with synthesized answer and individual viewpoints.
+        """
+        return self._mcp_tool_call("perspective_search", {"question": question})
+
+    # ------------------------------------------------------------------
+    # Content
+    # ------------------------------------------------------------------
+
+    def add_internal_content(
+        self,
+        input: list[str],
+        *,
+        extended_content: Optional[str] = None,
+        past_instructions: Optional[str] = None,
+    ) -> dict:
+        """Save notes or knowledge to your personal library.
+
+        Args:
+            input: Text blocks to save.
+            extended_content: Optional longer-form content.
+            past_instructions: Instructions for how the AI should use this content.
+
+        Returns:
+            Dict with success status and learning IDs.
+        """
+        args: dict[str, Any] = {"input": input}
+        if extended_content is not None:
+            args["extended_content"] = extended_content
+        if past_instructions is not None:
+            args["past_instructions"] = past_instructions
+        return self._mcp_tool_call("add_internal_content", args)
+
+    def update_internal_content(
+        self,
+        learning_id: str,
+        *,
+        user_input: Optional[list[str]] = None,
+        extended_content: Optional[str] = None,
+        past_instructions: Optional[str] = None,
+    ) -> dict:
+        """Update an existing note in your library.
+
+        Args:
+            learning_id: The learning ID to update.
+            user_input: Replacement note content.
+            extended_content: Replacement long-form content.
+            past_instructions: Replacement AI usage instructions.
+
+        Returns:
+            Dict with update result.
+        """
+        args: dict[str, Any] = {"learning_id": learning_id}
+        if user_input is not None:
+            args["user_input"] = user_input
+        if extended_content is not None:
+            args["extended_content"] = extended_content
+        if past_instructions is not None:
+            args["past_instructions"] = past_instructions
+        return self._mcp_tool_call("update_internal_content", args)
+
+    def add_external_content(
+        self,
+        urls: list[dict],
+        *,
+        reference: bool = True,
+        instant_recrawl: bool = True,
+    ) -> dict:
+        """Submit URLs to be crawled and added to your knowledge base.
+
+        Args:
+            urls: List of URL objects. Each must have a ``"url"`` key.
+            reference: Show citations from this content in AI answers.
+            instant_recrawl: Crawl immediately vs. queue.
+
+        Returns:
+            Dict with counts of successful, existing, and failed URLs.
+        """
+        return self._mcp_tool_call(
+            "add_external_content",
+            {"urls": urls, "reference": reference, "instant_recrawl": instant_recrawl},
+        )
+
+    def check_uncrawled_urls(self, urls: list[str]) -> dict:
+        """Check which URLs are not yet in your knowledge base.
+
+        Args:
+            urls: URLs to check.
+
+        Returns:
+            Dict with ``uncrawled_urls`` list and counts.
+        """
+        return self._mcp_tool_call("check_uncrawled_urls", {"urls": urls})
 
     # ------------------------------------------------------------------
     # Raw request helpers
@@ -443,8 +858,108 @@ class SuperMeClient:
     # Context manager / cleanup
     # ------------------------------------------------------------------
 
+    # ------------------------------------------------------------------
+    # Accounts (REST API — https://www.superme.ai/api/v1/)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _check_rest_response(resp: "httpx.Response") -> None:
+        """Raise with the API error message on non-2xx responses."""
+        if resp.is_success:
+            return
+        try:
+            body = resp.json()
+            msg = body.get("error") or body.get("message") or resp.text
+        except Exception:
+            msg = resp.text
+        raise RuntimeError(msg)
+
+    def get_connected_accounts(self, user_id: Optional[str] = None) -> dict:
+        """Return connected social accounts for the authenticated user.
+
+        Args:
+            user_id: Target user ID. Omit to use the authenticated user.
+
+        Returns:
+            Dict with ``connected_accounts`` and ``connected_blogs`` fields.
+        """
+        params: dict[str, Any] = {}
+        uid = user_id or self.user_id
+        if uid:
+            params["user_id"] = uid
+        resp = self._rest_http.get("/api/v1/get_connected_accounts", params=params)
+        self._check_rest_response(resp)
+        return resp.json()
+
+    def connect_social(
+        self,
+        platform: str,
+        handle: str,
+        token: Optional[str] = None,
+    ) -> dict:
+        """Connect a social platform account.
+
+        Args:
+            platform: Platform name — one of: medium, substack, x, instagram,
+                youtube, beehiiv, google_drive, linkedin, github, notion.
+            handle: Username / handle / URL for the platform.
+            token: API token (required for beehiiv; optional for github).
+
+        Returns:
+            Dict with ``status`` field.
+        """
+        body: dict[str, Any] = {"platform": platform, "handle": handle}
+        if token is not None:
+            body["token"] = token
+        resp = self._rest_http.post("/api/v1/connect_social", json=body)
+        self._check_rest_response(resp)
+        return resp.json()
+
+    def disconnect_social(self, platform: str) -> dict:
+        """Disconnect a social platform account.
+
+        Args:
+            platform: Platform name to disconnect.
+
+        Returns:
+            Dict with ``status`` field.
+        """
+        resp = self._rest_http.post(
+            "/api/v1/disconnect_social", json={"platform": platform}
+        )
+        self._check_rest_response(resp)
+        return resp.json()
+
+    def connect_blog(self, url: str) -> dict:
+        """Connect a custom blog or website.
+
+        Args:
+            url: Full URL of the blog (e.g. ``https://myblog.com``).
+                 Substack, Medium, Beehiiv, YouTube, and GitHub URLs are rejected.
+
+        Returns:
+            Dict with ``status`` field.
+        """
+        resp = self._rest_http.post("/api/v1/connect_blog", json={"url": url})
+        self._check_rest_response(resp)
+        return resp.json()
+
+    def disconnect_blog(self, url: str) -> dict:
+        """Disconnect a custom blog.
+
+        Args:
+            url: Full URL of the blog to disconnect.
+
+        Returns:
+            Dict with ``status`` field.
+        """
+        resp = self._rest_http.post("/api/v1/disconnect_blog", json={"url": url})
+        self._check_rest_response(resp)
+        return resp.json()
+
     def close(self) -> None:
         """Close the underlying HTTP client."""
+        self._rest_http.close()
         self._http.close()
 
     def __enter__(self) -> "SuperMeClient":
