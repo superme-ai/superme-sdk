@@ -29,7 +29,7 @@ def main():
         "ask",
         {"question": "What is growth marketing?", "username": "ludo"},
     )
-    print(f"  Answer: {answer[:200]}")
+    print(f"  Answer: {str(answer)[:200]}")
 
     # 3. Raw JSON-RPC request (tools/list)
     print("\n3. Raw JSON-RPC request (tools/list):")

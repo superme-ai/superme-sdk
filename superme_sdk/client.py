@@ -814,7 +814,7 @@ class SuperMeClient:
         content_list = result.get("content", [])
         if not content_list:
             return {}
-        text = content_list[0].get("text", "{}")
+        text = content_list[0].get("text") or "{}"
         parsed = json.loads(text)
         if not isinstance(parsed, dict):
             raise TypeError(
