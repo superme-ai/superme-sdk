@@ -669,7 +669,7 @@ class SuperMeClient:
         """
         args: dict[str, Any] = {
             "participants": participants,
-            "goal": topic,
+            "topic": topic,
         }
         if max_turns != 3:
             args["max_turns"] = max_turns
