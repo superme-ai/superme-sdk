@@ -646,6 +646,33 @@ class SuperMeClient:
         """
         return self._mcp_tool_call("perspective_search", {"question": question})
 
+    def group_converse(
+        self,
+        participants: list[str],
+        goal: str,
+        *,
+        max_turns: int = 3,
+    ) -> dict:
+        """Start a multi-turn group conversation between multiple people.
+
+        Args:
+            participants: People to include — names, usernames, or user IDs.
+                At least 2 must resolve to known users.
+            goal: What the conversation should accomplish.
+            max_turns: Maximum conversation turns (1-5, default 3).
+
+        Returns:
+            Dict with conversation_id, perspectives, participant_ids, and
+            any unresolved identifiers.
+        """
+        args: dict[str, Any] = {
+            "participants": participants,
+            "goal": goal,
+        }
+        if max_turns != 3:
+            args["max_turns"] = max_turns
+        return self._mcp_tool_call("group_converse", args)
+
     # ------------------------------------------------------------------
     # Content
     # ------------------------------------------------------------------
