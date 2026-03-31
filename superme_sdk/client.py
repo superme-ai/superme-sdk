@@ -652,14 +652,16 @@ class SuperMeClient:
         topic: str,
         *,
         max_turns: int = 3,
+        conversation_id: Optional[str] = None,
     ) -> dict:
-        """Start a multi-turn group conversation between multiple people.
+        """Start or continue a multi-turn group conversation.
 
         Args:
             participants: People to include — names, usernames, or user IDs.
                 At least 2 must resolve to known users.
             topic: The topic or question for the group to discuss.
             max_turns: Maximum conversation turns (1-5, default 3).
+            conversation_id: Continue an existing conversation. Omit to start new.
 
         Returns:
             Dict with conversation_id, perspectives, participant_ids, and
@@ -671,6 +673,8 @@ class SuperMeClient:
         }
         if max_turns != 3:
             args["max_turns"] = max_turns
+        if conversation_id is not None:
+            args["conversation_id"] = conversation_id
         return self._mcp_tool_call("group_converse", args)
 
     # ------------------------------------------------------------------
