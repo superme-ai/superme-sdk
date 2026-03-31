@@ -3,6 +3,8 @@
 Reads/writes API tokens from ~/.superme/token (same location used by mcp-install.sh).
 """
 
+from __future__ import annotations
+
 import os
 from pathlib import Path
 

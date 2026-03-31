@@ -68,32 +68,21 @@ messages.append({"role": "user", "content": "How do you measure it?"})
 response2, _ = client.ask_with_history(messages, username="ludo", conversation_id=conv_id)
 ```
 
-## Dev Setup
-
-```bash
-git clone https://github.com/superme-ai/superme-sdk.git
-cd superme-sdk
-pip install -e ".[dev]"
-```
-
-Run tests:
-```bash
-pytest                  # all tests
-pytest --cov=superme_sdk
-```
-
 ## Running Examples
 
 ```bash
-# Option 1 — env var
 export SUPERME_API_KEY=your_api_key_here
-
-# Option 2 — .env file (python-dotenv is included by default)
-cp .env.example .env   # fill in your key
 
 python examples/simple_example.py
 python examples/advanced_example.py
 python examples/mcp_example.py
+```
+
+Or with dotenv:
+```bash
+cp .env.example .env   # fill in your key
+set -a && source .env && set +a
+python examples/simple_example.py
 ```
 
 ## API Reference
@@ -102,20 +91,9 @@ python examples/mcp_example.py
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `ask(question, username, ...)` | `str` | Ask a question about a user |
-| `ask_with_history(messages, username, ...)` | `(str, str\|None)` | Ask with conversation history |
-| `ask_my_agent(question, *, conversation_id)` | `dict` | Talk to your own SuperMe AI |
-| `list_conversations(*, limit)` | `list[dict]` | List recent conversations |
-| `get_conversation(conversation_id)` | `dict` | Get conversation with messages |
-| `get_profile(identifier)` | `dict` | Get user profile |
-| `find_user_by_name(name, *, limit)` | `dict` | Search users by name |
-| `find_users_by_names(names, *, limit_per_name)` | `dict` | Batch resolve names to users |
-| `perspective_search(question)` | `dict` | Get multi-expert perspectives |
-| `add_internal_content(input, ...)` | `dict` | Add notes to your library |
-| `update_internal_content(learning_id, ...)` | `dict` | Update a library note |
-| `add_external_content(urls, ...)` | `dict` | Add URLs to knowledge base |
-| `check_uncrawled_urls(urls)` | `dict` | Check which URLs are unindexed |
-| `chat.completions.create(messages, model, ...)` | `ChatCompletion` | OpenAI-compatible interface |
+| `ask(question, username, *, conversation_id, max_tokens, incognito)` | `str` | Ask a single question |
+| `ask_with_history(messages, username, *, conversation_id, max_tokens, incognito)` | `(str, str\|None)` | Ask with conversation history |
+| `chat.completions.create(messages, model, *, username, conversation_id, ...)` | `ChatCompletion` | OpenAI-compatible chat completion |
 | `mcp_tool_call(tool_name, arguments)` | `dict` | Call any MCP tool by name |
 | `mcp_list_tools()` | `list[dict]` | List all available MCP tools |
 | `raw_request(method, params)` | `dict` | Raw MCP JSON-RPC request |

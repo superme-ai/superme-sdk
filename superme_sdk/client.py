@@ -73,7 +73,7 @@ class Completions:
         messages: list,
         model: str = "gpt-4",
         *,
-        username: Optional[str] = None,
+        username: str = "ludo",
         conversation_id: Optional[str] = None,
         max_tokens: int = 1000,
         incognito: bool = False,
@@ -115,11 +115,6 @@ class Completions:
             incognito = extra_body["incognito"]
         if "conversation_id" in extra_body:
             conversation_id = extra_body["conversation_id"]
-
-        if not username:
-            raise ValueError(
-                "username is required: pass username= directly or via extra_body={'username': ...}"
-            )
 
         # Extract the last user message as the question
         question = ""
@@ -206,21 +201,32 @@ class SuperMeClient:
         self,
         api_key: str,
         base_url: str = "https://mcp.superme.ai",
+        rest_base_url: str = "https://www.superme.ai",
         timeout: float = 120.0,
     ):
         if not api_key:
             raise ValueError("api_key is required")
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
+        self.rest_base_url = rest_base_url.rstrip("/")
+        _auth_headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        }
         self._http = httpx.Client(
             base_url=self.base_url,
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-                "Accept": "application/json, text/event-stream",
-            },
+            headers=_auth_headers,
             timeout=timeout,
             follow_redirects=True,
+        )
+        self._rest_http = httpx.Client(
+            base_url=self.rest_base_url,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Accept": "application/json",
+            },
+            timeout=timeout,
         )
         self._rpc_id = 0
         self.chat = Chat(self)
@@ -234,6 +240,18 @@ class SuperMeClient:
         """Current API token."""
         return self.api_key
 
+    @property
+    def user_id(self) -> Optional[str]:
+        """Extract user_id from the JWT token payload."""
+        try:
+            import base64
+            parts = self.api_key.split(".")
+            padded = parts[1] + "=" * (-len(parts[1]) % 4)
+            data = json.loads(base64.urlsafe_b64decode(padded))
+            return data.get("user_id")
+        except Exception:
+            return None
+
     # ------------------------------------------------------------------
     # High-level helpers
     # ------------------------------------------------------------------
@@ -241,7 +259,7 @@ class SuperMeClient:
     def ask(
         self,
         question: str,
-        username: str,
+        username: str = "ludo",
         conversation_id: Optional[str] = None,
         max_tokens: int = 1000,
         incognito: bool = False,
@@ -272,7 +290,7 @@ class SuperMeClient:
     def ask_with_history(
         self,
         messages: list,
-        username: str,
+        username: str = "ludo",
         conversation_id: Optional[str] = None,
         max_tokens: int = 1000,
         incognito: bool = False,
@@ -305,12 +323,24 @@ class SuperMeClient:
     # MCP tool helpers
     # ------------------------------------------------------------------
 
-    def mcp_tool_call(self, tool_name: str, arguments: dict) -> Any:
-        """Call any MCP tool by name and return the parsed result."""
+    def mcp_tool_call(self, tool_name: str, arguments: dict) -> dict:
+        """Call any MCP tool by name and return the parsed result.
+
+        Args:
+            tool_name: MCP tool name (e.g. ``"get_profile"``).
+            arguments: Tool arguments dict.
+
+        Returns:
+            Parsed JSON dict from the tool's response content.
+        """
         return self._mcp_tool_call(tool_name, arguments)
 
     def mcp_list_tools(self) -> list[dict]:
-        """List all available MCP tools."""
+        """List all available MCP tools.
+
+        Returns:
+            List of tool definitions.
+        """
         data = self._mcp_request("tools/list", {})
         return data.get("tools", [])
 
@@ -328,9 +358,8 @@ class SuperMeClient:
             List of conversation summary dicts.
         """
         result = self._mcp_tool_call("list_conversations", {"limit": limit})
-        if isinstance(result, list):
-            return result
-        return []
+        conversations = result.get("conversations", [])
+        return conversations if isinstance(conversations, list) else []
 
     def get_conversation(self, conversation_id: str) -> dict:
         """Fetch full details of a single conversation, including all messages.
@@ -363,10 +392,10 @@ class SuperMeClient:
         ``{"conversation_id": ..., "_done": True}`` so callers can capture
         the conversation ID without a second call.
         """
-        if self._is_stream_endpoint:
-            yield from self._stream_direct(question, conversation_id=conversation_id)
-        else:
-            yield from self._stream_mcp(question, conversation_id=conversation_id)
+        # if self._is_stream_endpoint:
+        yield from self._stream_direct(question, conversation_id=conversation_id)
+        # else:
+        #     yield from self._stream_mcp(question, conversation_id=conversation_id)
 
     def _stream_direct(
         self,
@@ -393,7 +422,7 @@ class SuperMeClient:
 
         # Disable compression so chunks arrive unbuffered
         with self._http.stream(
-            "POST", "/", json=payload,
+            "POST", "/mcp/chat/stream", json=payload,
             headers={"Accept-Encoding": "identity"},
         ) as resp:
             resp.raise_for_status()
@@ -775,28 +804,23 @@ class SuperMeClient:
             )
         return body.get("result", {})
 
-    def _mcp_tool_call(self, tool_name: str, arguments: dict) -> Any:
-        """Call an MCP tool and return the parsed JSON content.
-
-        Returns ``None`` when the server sends no content, so callers can
-        apply a type-appropriate default (e.g. ``[]`` for lists, ``{}``
-        for dicts).
-        """
+    def _mcp_tool_call(self, tool_name: str, arguments: dict) -> dict:
+        """Call an MCP tool and return the parsed JSON content."""
         result = self._mcp_request(
             "tools/call",
             {"name": tool_name, "arguments": arguments},
         )
+        # MCP tools return {content: [{type: "text", text: "<json>"}]}
         content_list = result.get("content", [])
         if not content_list:
-            return None
-        # Use ``or ""`` so a None value doesn't raise AttributeError on .strip()
-        text = (content_list[0].get("text") or "").strip()
-        if not text:
-            return None
-        # raw_decode parses the first valid JSON value and ignores any
-        # trailing content — guards against 'Extra data' responses.
-        obj, _ = json.JSONDecoder().raw_decode(text)
-        return obj
+            return {}
+        text = content_list[0].get("text") or "{}"
+        parsed = json.loads(text)
+        if not isinstance(parsed, dict):
+            raise TypeError(
+                f"Expected MCP tool to return a JSON object, got {type(parsed).__name__}"
+            )
+        return parsed
 
     @staticmethod
     def _parse_sse_json(text: str) -> dict:
@@ -834,8 +858,108 @@ class SuperMeClient:
     # Context manager / cleanup
     # ------------------------------------------------------------------
 
+    # ------------------------------------------------------------------
+    # Accounts (REST API — https://www.superme.ai/api/v1/)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _check_rest_response(resp: "httpx.Response") -> None:
+        """Raise with the API error message on non-2xx responses."""
+        if resp.is_success:
+            return
+        try:
+            body = resp.json()
+            msg = body.get("error") or body.get("message") or resp.text
+        except Exception:
+            msg = resp.text
+        raise RuntimeError(msg)
+
+    def get_connected_accounts(self, user_id: Optional[str] = None) -> dict:
+        """Return connected social accounts for the authenticated user.
+
+        Args:
+            user_id: Target user ID. Omit to use the authenticated user.
+
+        Returns:
+            Dict with ``connected_accounts`` and ``connected_blogs`` fields.
+        """
+        params: dict[str, Any] = {}
+        uid = user_id or self.user_id
+        if uid:
+            params["user_id"] = uid
+        resp = self._rest_http.get("/api/v1/get_connected_accounts", params=params)
+        self._check_rest_response(resp)
+        return resp.json()
+
+    def connect_social(
+        self,
+        platform: str,
+        handle: str,
+        token: Optional[str] = None,
+    ) -> dict:
+        """Connect a social platform account.
+
+        Args:
+            platform: Platform name — one of: medium, substack, x, instagram,
+                youtube, beehiiv, google_drive, linkedin, github, notion.
+            handle: Username / handle / URL for the platform.
+            token: API token (required for beehiiv; optional for github).
+
+        Returns:
+            Dict with ``status`` field.
+        """
+        body: dict[str, Any] = {"platform": platform, "handle": handle}
+        if token is not None:
+            body["token"] = token
+        resp = self._rest_http.post("/api/v1/connect_social", json=body)
+        self._check_rest_response(resp)
+        return resp.json()
+
+    def disconnect_social(self, platform: str) -> dict:
+        """Disconnect a social platform account.
+
+        Args:
+            platform: Platform name to disconnect.
+
+        Returns:
+            Dict with ``status`` field.
+        """
+        resp = self._rest_http.post(
+            "/api/v1/disconnect_social", json={"platform": platform}
+        )
+        self._check_rest_response(resp)
+        return resp.json()
+
+    def connect_blog(self, url: str) -> dict:
+        """Connect a custom blog or website.
+
+        Args:
+            url: Full URL of the blog (e.g. ``https://myblog.com``).
+                 Substack, Medium, Beehiiv, YouTube, and GitHub URLs are rejected.
+
+        Returns:
+            Dict with ``status`` field.
+        """
+        resp = self._rest_http.post("/api/v1/connect_blog", json={"url": url})
+        self._check_rest_response(resp)
+        return resp.json()
+
+    def disconnect_blog(self, url: str) -> dict:
+        """Disconnect a custom blog.
+
+        Args:
+            url: Full URL of the blog to disconnect.
+
+        Returns:
+            Dict with ``status`` field.
+        """
+        resp = self._rest_http.post("/api/v1/disconnect_blog", json={"url": url})
+        self._check_rest_response(resp)
+        return resp.json()
+
     def close(self) -> None:
         """Close the underlying HTTP client."""
+        self._rest_http.close()
         self._http.close()
 
     def __enter__(self) -> "SuperMeClient":
