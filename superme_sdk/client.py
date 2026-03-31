@@ -649,7 +649,7 @@ class SuperMeClient:
     def group_converse(
         self,
         participants: list[str],
-        goal: str,
+        topic: str,
         *,
         max_turns: int = 3,
     ) -> dict:
@@ -658,7 +658,7 @@ class SuperMeClient:
         Args:
             participants: People to include — names, usernames, or user IDs.
                 At least 2 must resolve to known users.
-            goal: What the conversation should accomplish.
+            topic: The topic or question for the group to discuss.
             max_turns: Maximum conversation turns (1-5, default 3).
 
         Returns:
@@ -667,7 +667,7 @@ class SuperMeClient:
         """
         args: dict[str, Any] = {
             "participants": participants,
-            "goal": goal,
+            "topic": topic,
         }
         if max_turns != 3:
             args["max_turns"] = max_turns
