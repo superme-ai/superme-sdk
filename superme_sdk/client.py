@@ -714,6 +714,10 @@ class SuperMeClient:
                     line = line.strip()
                     if not line:
                         continue
+                    if line.startswith("data: "):
+                        line = line[6:]
+                    elif line.startswith("data:"):
+                        line = line[5:]
                     try:
                         obj = json.loads(line)
                     except (json.JSONDecodeError, ValueError):
