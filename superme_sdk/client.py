@@ -224,7 +224,8 @@ class SuperMeClient:
             base_url=self.rest_base_url,
             headers={
                 "Authorization": f"Bearer {self.api_key}",
-                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "Accept": "application/json, text/event-stream",
             },
             timeout=timeout,
         )
@@ -647,6 +648,99 @@ class SuperMeClient:
         return self._mcp_tool_call("perspective_search", {"question": question})
 
     # ------------------------------------------------------------------
+    # Interview
+    # ------------------------------------------------------------------
+
+    def list_companies(self, *, active_only: bool = True) -> list[dict]:
+        """List companies with active roles.
+
+        Returns:
+            List of company dicts with ``company_id``.
+        """
+        result = self._mcp_tool_call("list_companies", {"active_only": active_only})
+        companies = result.get("companies", [])
+        return companies if isinstance(companies, list) else []
+
+    def list_company_roles(self, company_id: str) -> list[dict]:
+        """List active roles for a company.
+
+        Returns:
+            List of role dicts (id, title, summary, location, etc.).
+        """
+        result = self._mcp_tool_call(
+            "get_company_roles", {"company_id": company_id}
+        )
+        roles = result.get("roles", [])
+        return roles if isinstance(roles, list) else []
+
+    def list_active_roles(self, *, limit: int = 10) -> list[dict]:
+        """List active roles across all companies.
+
+        Fetches companies first, then collects roles up to *limit*.
+
+        Returns:
+            List of role dicts.
+        """
+        companies = self.list_companies(active_only=True)
+        all_roles: list[dict] = []
+        for company in companies:
+            cid = company.get("company_id")
+            if not cid:
+                continue
+            roles = self.list_company_roles(cid)
+            all_roles.extend(roles)
+            if len(all_roles) >= limit:
+                break
+        return all_roles[:limit]
+
+    def start_interview(self, role_id: str) -> dict:
+        """Start a background agent interview via REST API.
+
+        Returns:
+            Dict with ``interview_id`` and ``status`` (initially ``"preparing"``).
+            Poll :meth:`get_interview_status` for progress.
+        """
+        resp = self._rest_http.post(
+            "/v3/interview/start-agent",
+            json={"role_id": role_id},
+        )
+        self._check_rest_response(resp)
+        return resp.json()
+
+    def get_interview_status(self, interview_id: str) -> dict:
+        """Poll interview status.
+
+        Returns:
+            Dict with ``status``, ``stages``, and other session info.
+        """
+        resp = self._rest_http.get(f"/v3/interview/{interview_id}/status")
+        self._check_rest_response(resp)
+        return resp.json()
+
+    def get_interview_transcript(self, interview_id: str) -> dict:
+        """Get the full transcript for an interview.
+
+        Returns:
+            Dict with ``transcript`` list of stages and messages.
+        """
+        resp = self._rest_http.get(f"/v3/interview/{interview_id}/transcript")
+        self._check_rest_response(resp)
+        return resp.json()
+
+    def list_my_interviews(self) -> list[dict]:
+        """List interviews for the authenticated user.
+
+        Returns:
+            List of interview summary dicts.
+        """
+        uid = self.user_id
+        if not uid:
+            raise ValueError("Cannot extract user_id from token")
+        resp = self._rest_http.get(f"/v3/interview/by-user/{uid}")
+        self._check_rest_response(resp)
+        return resp.json().get("interviews", [])
+
+    # ------------------------------------------------------------------
     # Content
     # ------------------------------------------------------------------
 
@@ -776,7 +870,7 @@ class SuperMeClient:
         return self._rpc_id
 
     def _mcp_request(self, method: str, params: dict) -> dict:
-        """Send a JSON-RPC 2.0 request to the MCP endpoint.
+        """Send a JSON-RPC 2.0 request to /mcp on the REST base URL.
 
         FastMCP Streamable HTTP may respond with either
         ``application/json`` or ``text/event-stream`` (SSE).  This method
@@ -788,7 +882,7 @@ class SuperMeClient:
             "method": method,
             "params": params,
         }
-        resp = self._http.post("/", json=payload)
+        resp = self._rest_http.post("/mcp/", json=payload)
         resp.raise_for_status()
 
         ct = resp.headers.get("content-type", "")
