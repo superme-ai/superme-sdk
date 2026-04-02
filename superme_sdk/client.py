@@ -740,6 +740,46 @@ class SuperMeClient:
         self._check_rest_response(resp)
         return resp.json().get("interviews", [])
 
+    def stream_interview(self, interview_id: str):
+        """Stream interview events via SSE from ``GET /v3/interview/{id}/stream``.
+
+        Yields dicts parsed from the SSE ``data:`` lines. Each dict has an
+        ``event`` key (``"message"``, ``"status"``, or ``"stage_change"``).
+
+        Terminal statuses (``completed``, ``scoring``, ``scored``) cause the
+        generator to return.
+        """
+        terminal = {"completed", "scoring", "scored"}
+        with self._rest_http.stream(
+            "GET",
+            f"/v3/interview/{interview_id}/stream",
+            headers={"Accept-Encoding": "identity"},
+            timeout=None,
+        ) as resp:
+            resp.raise_for_status()
+            buf = ""
+            for raw in resp.iter_text():
+                buf += raw
+                while "\n" in buf:
+                    line, buf = buf.split("\n", 1)
+                    line = line.strip()
+                    if not line or line.startswith(":"):
+                        continue
+                    if line.startswith("data: "):
+                        line = line[6:]
+                    elif line.startswith("data:"):
+                        line = line[5:]
+                    else:
+                        continue
+                    try:
+                        obj = json.loads(line)
+                    except (json.JSONDecodeError, ValueError):
+                        continue
+                    if isinstance(obj, dict):
+                        yield obj
+                        if obj.get("status") in terminal:
+                            return
+
     # ------------------------------------------------------------------
     # Content
     # ------------------------------------------------------------------
