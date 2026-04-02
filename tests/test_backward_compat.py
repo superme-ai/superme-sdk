@@ -24,7 +24,7 @@ import respx
 from superme_sdk.client import SuperMeClient
 
 # Latest SDK default MCP base URL
-BASE = "https://mcp.superme.ai"
+REST_BASE = "https://www.superme.ai"
 
 # MCP response for a successful "ask" tool call
 _ASK_PAYLOAD = {
@@ -46,7 +46,7 @@ MCP_TOOL_RESPONSE = {
 
 
 def _mock_ask():
-    return respx.post(f"{BASE}/").mock(
+    return respx.post(f"{REST_BASE}/mcp/").mock(
         return_value=httpx.Response(200, json=MCP_TOOL_RESPONSE)
     )
 
@@ -280,7 +280,7 @@ def test_chat_completions_create_returns_response_with_content():
 @respx.mock
 def test_raw_request_mcp_method_returns_dict():
     """raw_request("tools/list") must return the result dict."""
-    respx.post(f"{BASE}/").mock(
+    respx.post(f"{REST_BASE}/mcp/").mock(
         return_value=httpx.Response(
             200,
             json={
