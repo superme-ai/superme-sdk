@@ -701,7 +701,7 @@ class SuperMeClient:
             Poll :meth:`get_interview_status` for progress.
         """
         resp = self._rest_http.post(
-            "/v3/interview/start-agent",
+            "/api/v3/interview/start-agent",
             json={"role_id": role_id},
         )
         self._check_rest_response(resp)
@@ -713,7 +713,7 @@ class SuperMeClient:
         Returns:
             Dict with ``status``, ``stages``, and other session info.
         """
-        resp = self._rest_http.get(f"/v3/interview/{interview_id}/status")
+        resp = self._rest_http.get(f"/api/v3/interview/{interview_id}/status")
         self._check_rest_response(resp)
         return resp.json()
 
@@ -723,7 +723,7 @@ class SuperMeClient:
         Returns:
             Dict with ``transcript`` list of stages and messages.
         """
-        resp = self._rest_http.get(f"/v3/interview/{interview_id}/transcript")
+        resp = self._rest_http.get(f"/api/v3/interview/{interview_id}/transcript")
         self._check_rest_response(resp)
         return resp.json()
 
@@ -736,12 +736,12 @@ class SuperMeClient:
         uid = self.user_id
         if not uid:
             raise ValueError("Cannot extract user_id from token")
-        resp = self._rest_http.get(f"/v3/interview/by-user/{uid}")
+        resp = self._rest_http.get(f"/api/v3/interview/by-user/{uid}")
         self._check_rest_response(resp)
         return resp.json().get("interviews", [])
 
     def stream_interview(self, interview_id: str):
-        """Stream interview events via SSE from ``GET /v3/interview/{id}/stream``.
+        """Stream interview events via SSE from ``GET /api/v3/interview/{id}/stream``.
 
         Yields dicts parsed from the SSE ``data:`` lines. Each dict has an
         ``event`` key (``"message"``, ``"status"``, or ``"stage_change"``).
@@ -752,7 +752,7 @@ class SuperMeClient:
         terminal = {"completed", "scoring", "scored"}
         with self._rest_http.stream(
             "GET",
-            f"/v3/interview/{interview_id}/stream",
+            f"/api/v3/interview/{interview_id}/stream",
             headers={"Accept-Encoding": "identity"},
             timeout=None,
         ) as resp:
@@ -922,7 +922,7 @@ class SuperMeClient:
             "method": method,
             "params": params,
         }
-        resp = self._rest_http.post("/mcp/", json=payload)
+        resp = self._http.post("/mcp/", json=payload)
         resp.raise_for_status()
 
         ct = resp.headers.get("content-type", "")

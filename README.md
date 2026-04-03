@@ -8,12 +8,19 @@ Python SDK for the SuperMe API. Ask questions to professionals, search expert pe
 pip install superme-sdk
 ```
 
+Or with uv:
+
+```bash
+uv pip install superme-sdk
+```
+
 From source:
 
 ```bash
 git clone https://github.com/superme-ai/superme-sdk.git
 cd superme-sdk
-pip install -e .
+uv sync
+source .venv/bin/activate
 ```
 
 ## Authentication
