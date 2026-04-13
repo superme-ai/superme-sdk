@@ -81,6 +81,27 @@ class HttpMixin:
                     elif msg_type == "done":
                         pass
 
+            # Flush any remaining data not terminated by a newline
+            if buf.strip():
+                line = buf.strip()
+                if line.startswith("data: "):
+                    line = line[6:]
+                elif line.startswith("data:"):
+                    line = line[5:]
+                try:
+                    obj = json.loads(line)
+                    if isinstance(obj, dict):
+                        msg_type = obj.get("type", "")
+                        metadata = obj.get("metadata") or {}
+                        if msg_type == "session_info":
+                            conv_id_out = metadata.get("session_id") or conv_id_out
+                        elif msg_type == "content":
+                            text = obj.get("content", "")
+                            if text:
+                                yield text
+                except (json.JSONDecodeError, ValueError):
+                    yield line
+
         yield {"conversation_id": conv_id_out, "_done": True}
 
     def _stream_mcp(
