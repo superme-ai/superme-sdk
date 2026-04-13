@@ -129,12 +129,12 @@ class HttpMixin:
 
             for raw_line in resp.iter_lines():
                 if raw_line.startswith("data: "):
-                    current_block.append(raw_line[6:])
+                    current_block.append(raw_line[6:] + "\n")
                 elif raw_line.startswith("data:"):
-                    current_block.append(raw_line[5:])
+                    current_block.append(raw_line[5:] + "\n")
                 elif raw_line == "" and current_block:
                     try:
-                        obj = json.loads("".join(current_block))
+                        obj = json.loads("".join(current_block).rstrip("\n"))
                     except (json.JSONDecodeError, ValueError):
                         current_block = []
                         continue
@@ -156,7 +156,7 @@ class HttpMixin:
             # Handle trailing block without a final blank line
             if current_block:
                 try:
-                    obj = json.loads("".join(current_block))
+                    obj = json.loads("".join(current_block).rstrip("\n"))
                     if "result" in obj:
                         result = self._extract_tool_result(obj["result"])
                         if result:
@@ -254,7 +254,9 @@ class HttpMixin:
         content_list = result.get("content", [])
         if not content_list:
             return {}
-        text = (content_list[0].get("text") or "").strip() or "{}"
+        raw_text = content_list[0].get("text")
+        import sys; print(f"[DEBUG] _mcp_tool_call tool={tool_name!r} content_list={content_list!r} raw_text={raw_text!r}", file=sys.stderr)
+        text = (raw_text or "").strip() or "{}"
         parsed = json.loads(text)
         if not isinstance(parsed, dict):
             raise TypeError(

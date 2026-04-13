@@ -89,3 +89,18 @@ class GroupsMixin:
                     if obj.get("type") == "done":
                         obj["_done"] = True
                     yield obj
+            # Flush any remaining data not terminated by a newline
+            if buf.strip():
+                line = buf.strip()
+                if line.startswith("data: "):
+                    line = line[6:]
+                elif line.startswith("data:"):
+                    line = line[5:]
+                try:
+                    obj = json.loads(line)
+                    if isinstance(obj, dict):
+                        if obj.get("type") == "done":
+                            obj["_done"] = True
+                        yield obj
+                except (json.JSONDecodeError, ValueError):
+                    pass
