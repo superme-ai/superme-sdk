@@ -8,14 +8,14 @@ from typing import Any, Optional
 import httpx
 
 from ._chat_proxy import Chat, Completions
-from ._companies import CompaniesMixin
-from ._content import ContentMixin
-from ._conversations import ConversationsMixin
-from ._groups import GroupsMixin
 from ._http import HttpMixin
-from ._interviews import InterviewsMixin
-from ._profiles import ProfilesMixin
-from ._social import SocialMixin
+from .services._companies import CompaniesMixin
+from .services._content import ContentMixin
+from .services._conversations import ConversationsMixin
+from .services._groups import GroupsMixin
+from .services._interviews import InterviewsMixin
+from .services._profiles import ProfilesMixin
+from .services._social import SocialMixin
 from .models import ChatCompletion, Choice, Message, Usage
 
 # Re-export for backward compatibility:
