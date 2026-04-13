@@ -157,6 +157,11 @@ class HttpMixin:
             if current_block:
                 try:
                     obj = json.loads("".join(current_block).rstrip("\n"))
+                    if "error" in obj:
+                        err = obj["error"]
+                        raise RuntimeError(
+                            f"MCP error {err.get('code', '?')}: {err.get('message', str(err))}"
+                        )
                     if "result" in obj:
                         result = self._extract_tool_result(obj["result"])
                         if result:
