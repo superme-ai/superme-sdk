@@ -260,7 +260,6 @@ class HttpMixin:
         if not content_list:
             return {}
         raw_text = content_list[0].get("text")
-        import sys; print(f"[DEBUG] _mcp_tool_call tool={tool_name!r} content_list={content_list!r} raw_text={raw_text!r}", file=sys.stderr)
         text = (raw_text or "").strip() or "{}"
         parsed = json.loads(text)
         if not isinstance(parsed, dict):
