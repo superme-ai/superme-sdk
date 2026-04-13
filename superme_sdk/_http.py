@@ -167,8 +167,7 @@ class HttpMixin:
                 except (json.JSONDecodeError, ValueError):
                     pass
 
-            if prev_text or conv_id_out:
-                yield {"conversation_id": conv_id_out, "_done": True}
+            yield {"conversation_id": conv_id_out, "_done": True}
 
     @staticmethod
     def _extract_tool_result(result: dict) -> Optional[dict]:
@@ -210,8 +209,7 @@ class HttpMixin:
         Returns:
             ``httpx.Response`` object.
         """
-        url = f"{self.base_url}{endpoint}"
-        return self._http.request(method, url, **kwargs)
+        return self._http.request(method, endpoint, **kwargs)
 
     def _next_rpc_id(self) -> int:
         self._rpc_id += 1
@@ -256,7 +254,7 @@ class HttpMixin:
         content_list = result.get("content", [])
         if not content_list:
             return {}
-        text = content_list[0].get("text") or "{}"
+        text = (content_list[0].get("text") or "").strip() or "{}"
         parsed = json.loads(text)
         if not isinstance(parsed, dict):
             raise TypeError(
@@ -282,9 +280,9 @@ class HttpMixin:
         last_block: list[str] = []
         for line in text.splitlines():
             if line.startswith("data: "):
-                current_block.append(line[6:])
+                current_block.append(line[6:] + "\n")
             elif line.startswith("data:"):
-                current_block.append(line[5:])
+                current_block.append(line[5:] + "\n")
             elif line == "" and current_block:
                 # end of an event block — commit and reset
                 last_block = current_block
@@ -294,7 +292,7 @@ class HttpMixin:
             last_block = current_block
         if not last_block:
             raise ValueError("No data lines found in SSE response")
-        return json.loads("".join(last_block))
+        return json.loads("".join(last_block).rstrip("\n"))
 
     @staticmethod
     def _check_rest_response(resp: "httpx.Response") -> None:

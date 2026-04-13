@@ -57,7 +57,7 @@ class GroupsMixin:
             "topic": topic,
             "max_turns": max_turns,
         }
-        if conversation_id:
+        if conversation_id is not None:
             payload["conversation_id"] = conversation_id
 
         with self._http.stream(

@@ -18,7 +18,7 @@ class Choice:
 
     def __init__(self, data: dict) -> None:
         self.index: int = data.get("index", 0)
-        self.message = Message(data.get("message", {}))
+        self.message = Message(data.get("message") or {})
         self.finish_reason: Optional[str] = data.get("finish_reason")
 
 
