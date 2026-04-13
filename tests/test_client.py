@@ -8,7 +8,7 @@ import respx
 
 from superme_sdk.client import SuperMeClient, ChatCompletion
 
-REST_BASE = "https://www.superme.ai"
+MCP_BASE = "https://mcp.superme.ai"
 
 # MCP ask tool response (what the backend returns inside JSON-RPC)
 ASK_RESULT = {
@@ -34,7 +34,7 @@ MCP_TOOL_RESPONSE = {
 
 def _mock_mcp_ask():
     """Helper to mock a POST / that returns ASK_RESULT."""
-    return respx.post(f"{REST_BASE}/mcp/").mock(
+    return respx.post(f"{MCP_BASE}/mcp/").mock(
         return_value=httpx.Response(200, json=MCP_TOOL_RESPONSE)
     )
 
@@ -172,7 +172,7 @@ def test_chat_completions_create_no_user_message_raises():
 @respx.mock
 def test_mcp_tool_call():
     profile_result = {"name": "Ludo", "username": "ludo"}
-    respx.post(f"{REST_BASE}/mcp/").mock(
+    respx.post(f"{MCP_BASE}/mcp/").mock(
         return_value=httpx.Response(
             200,
             json={
@@ -197,7 +197,7 @@ def test_mcp_tool_call():
 
 @respx.mock
 def test_mcp_error_raises_runtime_error():
-    respx.post(f"{REST_BASE}/mcp/").mock(
+    respx.post(f"{MCP_BASE}/mcp/").mock(
         return_value=httpx.Response(
             200,
             json={
@@ -215,7 +215,7 @@ def test_mcp_error_raises_runtime_error():
 
 @respx.mock
 def test_http_error_raises():
-    respx.post(f"{REST_BASE}/mcp/").mock(
+    respx.post(f"{MCP_BASE}/mcp/").mock(
         return_value=httpx.Response(401, json={"error": "unauthorized"})
     )
     client = SuperMeClient(api_key="bad-tok")
@@ -234,7 +234,7 @@ def test_raw_request():
         "id": 1,
         "result": {"tools": [{"name": "ask", "description": "Ask a question"}]},
     }
-    respx.post(f"{REST_BASE}/mcp/").mock(
+    respx.post(f"{MCP_BASE}/mcp/").mock(
         return_value=httpx.Response(200, json=tools_response)
     )
     client = SuperMeClient(api_key="tok")
