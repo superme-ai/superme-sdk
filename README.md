@@ -101,7 +101,7 @@ python examples/simple_example.py
 | Method | Returns | Description |
 |--------|---------|-------------|
 | `ask(question, username, *, conversation_id, max_tokens, incognito)` | `str` | Ask a question to a user's SuperMe agent. Returns the answer text. |
-| `ask_with_history(messages, username, *, conversation_id, max_tokens, incognito)` | `(str, str\|None)` | Accepts an OpenAI-style messages list, but **only the last user message is sent to the API** — the rest of the list is ignored. Does not auto-append to the list. Returns `(answer, conversation_id)`; pass the returned `conversation_id` back on the next call to continue the thread server-side. |
+| ~~`ask_with_history(messages, username, *, conversation_id, max_tokens, incognito)`~~ | `(str, str\|None)` | **Deprecated** — kept for backward compatibility. Use `ask` with `conversation_id` instead. Only the last user message is sent; the rest of the list is ignored. |
 | `ask_my_agent(question, *, conversation_id)` | `dict` | Talk to your own SuperMe AI agent. Returns `{"response": ..., "conversation_id": ...}`. |
 | `ask_my_agent_stream(question, *, conversation_id)` | `generator` | Stream your own agent's response. Yields string chunks; final item is `{"conversation_id": ..., "_done": True}`. |
 | `list_conversations(*, limit)` | `list[dict]` | List your most recent conversations. |
