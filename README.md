@@ -94,16 +94,78 @@ python examples/simple_example.py
 
 ## API Reference
 
-### `SuperMeClient(api_key, base_url="https://mcp.superme.ai", timeout=120.0)`
+### `SuperMeClient(api_key, base_url="https://mcp.superme.ai", rest_base_url="https://www.superme.ai", timeout=120.0)`
+
+#### Conversations & agent
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `ask(question, username, *, conversation_id, max_tokens, incognito)` | `str` | Ask a single question |
-| `ask_with_history(messages, username, *, conversation_id, max_tokens, incognito)` | `(str, str\|None)` | Ask with conversation history |
-| `chat.completions.create(messages, model, *, username, conversation_id, ...)` | `ChatCompletion` | OpenAI-compatible chat completion |
-| `mcp_tool_call(tool_name, arguments)` | `dict` | Call any MCP tool by name |
-| `mcp_list_tools()` | `list[dict]` | List all available MCP tools |
-| `raw_request(method, params)` | `dict` | Raw MCP JSON-RPC request |
+| `ask(question, username, *, conversation_id, max_tokens, incognito)` | `str` | Ask a question to a user's SuperMe agent. Returns the answer text. |
+| ~~`ask_with_history(messages, username, *, conversation_id, max_tokens, incognito)`~~ | `(str, str\|None)` | **Deprecated** — kept for backward compatibility. Use `ask` with `conversation_id` instead. Only the last user message is sent; the rest of the list is ignored. |
+| `ask_my_agent(question, *, conversation_id)` | `dict` | Talk to your own SuperMe AI agent. Returns `{"response": ..., "conversation_id": ...}`. |
+| `ask_my_agent_stream(question, *, conversation_id)` | `generator` | Stream your own agent's response. Yields string chunks; final item is `{"conversation_id": ..., "_done": True}`. |
+| `list_conversations(*, limit)` | `list[dict]` | List your most recent conversations. |
+| `get_conversation(conversation_id)` | `dict` | Fetch a single conversation with all its messages. |
+
+#### Profiles & search
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `get_profile(identifier)` | `dict` | Get a user's public profile. Omit `identifier` for your own profile. |
+| `find_user_by_name(name, *, limit)` | `dict` | Search for users by name. |
+| `find_users_by_names(names, *, limit_per_name)` | `dict` | Resolve multiple names to SuperMe users in one call. |
+| `perspective_search(question)` | `dict` | Get perspectives from multiple experts on a topic. |
+
+#### Group conversations
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `group_converse(participants, topic, *, max_turns, conversation_id)` | `dict` | Start or continue a multi-turn group conversation between multiple users. |
+| `group_converse_stream(participants, topic, *, max_turns, conversation_id)` | `generator` | Stream a group conversation. Yields per-perspective dicts; final item has `"_done": True`. |
+
+#### Content
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `add_internal_content(input, *, extended_content, past_instructions)` | `dict` | Save notes or knowledge to your personal library. |
+| `update_internal_content(learning_id, *, user_input, extended_content, past_instructions)` | `dict` | Update an existing note. |
+| `add_external_content(urls, *, reference, instant_recrawl)` | `dict` | Submit URLs to be crawled and added to your knowledge base. |
+| `check_uncrawled_urls(urls)` | `dict` | Check which URLs are not yet in your knowledge base. |
+
+#### Social accounts
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `get_connected_accounts()` | `dict` | List connected social accounts and blogs. |
+| `connect_social(platform, handle, *, token)` | `dict` | Connect a social platform account (medium, substack, x, instagram, youtube, beehiiv, google_drive, linkedin, github, notion). |
+| `disconnect_social(platform)` | `dict` | Disconnect a social platform account. |
+| `connect_blog(url)` | `dict` | Connect a custom blog or website. |
+| `disconnect_blog(url)` | `dict` | Disconnect a custom blog. |
+
+#### Interviews
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `list_active_roles(*, limit)` | `list[dict]` | List active job roles across all companies. |
+| `start_interview(role_id)` | `dict` | Start a background agent interview. Returns `{"interview_id": ..., "status": "preparing"}`. |
+| `stream_interview(interview_id)` | `generator` | Stream interview events via SSE. Yields dicts with `event` key; stops at terminal status. |
+| `list_my_interviews()` | `list[dict]` | List your interviews. |
+| `get_interview_status(interview_id)` | `dict` | Poll interview status and stages. |
+| `get_interview_transcript(interview_id)` | `dict` | Get the full transcript for a completed interview. |
+
+#### OpenAI-compatible interface
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `chat.completions.create(messages, model, *, username, conversation_id, ...)` | `ChatCompletion` | OpenAI-compatible chat completion backed by the SuperMe MCP server. |
+
+#### Low-level
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `mcp_tool_call(tool_name, arguments)` | `dict` | Call any MCP tool by name. |
+| `mcp_list_tools()` | `list[dict]` | List all available MCP tools. |
+| `raw_request(method, params)` | `dict` | Raw MCP JSON-RPC request. |
 
 ### OpenAI-compatible interface
 
@@ -117,7 +179,7 @@ print(response.choices[0].message.content)
 print(response.metadata["conversation_id"])
 ```
 
-### MCP tools via SDK
+### Low-level MCP access
 
 ```python
 # List available tools
