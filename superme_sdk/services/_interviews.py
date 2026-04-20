@@ -107,7 +107,7 @@ class InterviewsMixin:
         return resp.json()
 
     def stream_interview(self, interview_id: str):
-        """Stream interview events via SSE from ``GET /api/v3/interview/{id}/stream``.
+        """Stream interview events via SSE from ``GET /api/v3/agent/interview/{id}/stream``.
 
         Yields dicts parsed from the SSE ``data:`` lines. Each dict has an
         ``event`` key (``"message"``, ``"status"``, or ``"stage_change"``).

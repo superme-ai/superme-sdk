@@ -36,6 +36,9 @@ class TestContractAllMethodsExist:
             "get_interview_transcript",
             "list_my_interviews",
             "stream_interview",
+            "send_interview_message",
+            "submit_interview",
+            "withdraw_interview",
         ]
         for name in expected:
             assert hasattr(SuperMeClient, name), f"SuperMeClient missing method: {name}"
