@@ -35,6 +35,7 @@ plugins:
             docstring_style: google
             show_source: true
             show_signature_annotations: true
+            separate_signature: true
             members_order: source
 
 markdown_extensions:
