@@ -16,14 +16,6 @@ class ContentMixin:
     ) -> dict:
         """Save notes or knowledge to your personal library.
 
-        Args:
-            input: Text blocks to save.
-            extended_content: Optional longer-form content.
-            past_instructions: Instructions for how the AI should use this content.
-
-        Returns:
-            Dict with success status and learning IDs.
-
         Example:
             ```python
             result = client.add_internal_content(
@@ -32,6 +24,14 @@ class ContentMixin:
             )
             learning_id = result["learning_ids"][0]
             ```
+
+        Args:
+            input: Text blocks to save.
+            extended_content: Optional longer-form content.
+            past_instructions: Instructions for how the AI should use this content.
+
+        Returns:
+            Dict with success status and learning IDs.
         """
         args: dict[str, Any] = {"input": input}
         if extended_content is not None:
@@ -49,6 +49,14 @@ class ContentMixin:
         past_instructions: Optional[str] = None,
     ) -> dict:
         """Update an existing note in your library.
+
+        Example:
+            ```python
+            client.update_internal_content(
+                "learning_abc123",
+                user_input=["Updated insight: community beats ads at scale."],
+            )
+            ```
 
         Args:
             learning_id: The learning ID to update.
@@ -77,14 +85,6 @@ class ContentMixin:
     ) -> dict:
         """Submit URLs to be crawled and added to your knowledge base.
 
-        Args:
-            urls: List of URL objects. Each must have a ``"url"`` key.
-            reference: Show citations from this content in AI answers.
-            instant_recrawl: Crawl immediately vs. queue.
-
-        Returns:
-            Dict with counts of successful, existing, and failed URLs.
-
         Example:
             ```python
             result = client.add_external_content(
@@ -92,6 +92,14 @@ class ContentMixin:
             )
             print(result["successful"], "URLs added")
             ```
+
+        Args:
+            urls: List of URL objects. Each must have a ``"url"`` key.
+            reference: Show citations from this content in AI answers.
+            instant_recrawl: Crawl immediately vs. queue.
+
+        Returns:
+            Dict with counts of successful, existing, and failed URLs.
         """
         return self._mcp_tool_call(
             "add_external_content",
@@ -100,6 +108,12 @@ class ContentMixin:
 
     def check_uncrawled_urls(self, urls: list[str]) -> dict:
         """Check which URLs are not yet in your knowledge base.
+
+        Example:
+            ```python
+            result = client.check_uncrawled_urls(["https://myblog.com/post-1"])
+            print(result["uncrawled_urls"])
+            ```
 
         Args:
             urls: URLs to check.

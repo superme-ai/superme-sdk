@@ -18,6 +18,15 @@ class ConversationsMixin:
     ) -> str:
         """Ask a single question.
 
+        Example:
+            ```python
+            answer = client.ask("What is PMF?", username="ludo")
+            print(answer)
+
+            # anonymously
+            answer = client.ask("What is PMF?", username="ludo", incognito=True)
+            ```
+
         Args:
             question: The question to ask.
             username: Target SuperMe username.
@@ -27,15 +36,6 @@ class ConversationsMixin:
 
         Returns:
             Answer text.
-
-        Example:
-            ```python
-            answer = client.ask("What is PMF?", username="ludo")
-            print(answer)
-
-            # anonymously
-            answer = client.ask("What is PMF?", username="ludo", incognito=True)
-            ```
         """
         response = self.chat.completions.create(
             messages=[{"role": "user", "content": question}],
@@ -58,16 +58,6 @@ class ConversationsMixin:
     ) -> tuple:
         """Ask with conversation history.
 
-        Args:
-            messages: List of ``{"role": ..., "content": ...}`` dicts.
-            username: Target SuperMe username.
-            conversation_id: Continue an existing conversation.
-            max_tokens: Max response tokens.
-            incognito: Ask anonymously.
-
-        Returns:
-            ``(answer_text, conversation_id)``
-
         Example:
             ```python
             messages = [{"role": "user", "content": "What is growth hacking?"}]
@@ -82,6 +72,16 @@ class ConversationsMixin:
                 messages, username="ludo", conversation_id=conv_id
             )
             ```
+
+        Args:
+            messages: List of ``{"role": ..., "content": ...}`` dicts.
+            username: Target SuperMe username.
+            conversation_id: Continue an existing conversation.
+            max_tokens: Max response tokens.
+            incognito: Ask anonymously.
+
+        Returns:
+            ``(answer_text, conversation_id)``
         """
         response = self.chat.completions.create(
             messages=messages,
@@ -97,6 +97,11 @@ class ConversationsMixin:
     def mcp_tool_call(self, tool_name: str, arguments: dict) -> dict:
         """Call any MCP tool by name and return the parsed result.
 
+        Example:
+            ```python
+            result = client.mcp_tool_call("get_profile", {"identifier": "ludo"})
+            ```
+
         Args:
             tool_name: MCP tool name (e.g. ``"get_profile"``).
             arguments: Tool arguments dict.
@@ -109,6 +114,13 @@ class ConversationsMixin:
     def mcp_list_tools(self) -> list[dict]:
         """List all available MCP tools.
 
+        Example:
+            ```python
+            tools = client.mcp_list_tools()
+            for t in tools:
+                print(t["name"])
+            ```
+
         Returns:
             List of tool definitions.
         """
@@ -118,18 +130,18 @@ class ConversationsMixin:
     def list_conversations(self, *, limit: int = 20) -> list[dict]:
         """Return the authenticated user's most recent conversations.
 
-        Args:
-            limit: Maximum number of conversations to return.
-
-        Returns:
-            List of conversation summary dicts.
-
         Example:
             ```python
             convs = client.list_conversations(limit=5)
             for c in convs:
                 print(c["conversation_id"], c["title"])
             ```
+
+        Args:
+            limit: Maximum number of conversations to return.
+
+        Returns:
+            List of conversation summary dicts.
         """
         result = self._mcp_tool_call("list_conversations", {"limit": limit})
         if isinstance(result, list):
@@ -140,18 +152,18 @@ class ConversationsMixin:
     def get_conversation(self, conversation_id: str) -> dict:
         """Fetch full details of a single conversation, including all messages.
 
-        Args:
-            conversation_id: The conversation ID (from list_conversations).
-
-        Returns:
-            Conversation dict with metadata and message history.
-
         Example:
             ```python
             conv = client.get_conversation("conv_abc123")
             for msg in conv["messages"]:
                 print(msg["role"], msg["content"])
             ```
+
+        Args:
+            conversation_id: The conversation ID (from list_conversations).
+
+        Returns:
+            Conversation dict with metadata and message history.
         """
         return self._mcp_tool_call(
             "get_conversation", {"conversation_id": conversation_id}
@@ -164,6 +176,15 @@ class ConversationsMixin:
         conversation_id: Optional[str] = None,
     ):
         """Stream a response from your SuperMe AI agent.
+
+        Example:
+            ```python
+            for chunk in client.ask_my_agent_stream("Summarise my last 3 posts"):
+                if isinstance(chunk, str):
+                    print(chunk, end="", flush=True)
+                elif isinstance(chunk, dict) and chunk.get("_done"):
+                    conv_id = chunk["conversation_id"]
+            ```
 
         Yields string chunks as they arrive from the server via SSE.
         The last item is always a dict
@@ -183,13 +204,6 @@ class ConversationsMixin:
     ) -> dict:
         """Talk to your own SuperMe AI agent.
 
-        Args:
-            question: Your message to the agent.
-            conversation_id: Continue an existing conversation.
-
-        Returns:
-            Dict with ``response`` and ``conversation_id``.
-
         Example:
             ```python
             result = client.ask_my_agent("Summarise my last 3 posts")
@@ -201,6 +215,13 @@ class ConversationsMixin:
                 conversation_id=result["conversation_id"],
             )
             ```
+
+        Args:
+            question: Your message to the agent.
+            conversation_id: Continue an existing conversation.
+
+        Returns:
+            Dict with ``response`` and ``conversation_id``.
         """
         args: dict[str, Any] = {"question": question}
         if conversation_id:

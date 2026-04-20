@@ -18,6 +18,16 @@ class GroupsMixin:
     ) -> dict:
         """Start or continue a multi-turn group conversation.
 
+        Example:
+            ```python
+            result = client.group_converse(
+                participants=["ludo", "duy"],
+                topic="What's the best growth channel for B2B SaaS?",
+            )
+            for p in result["perspectives"]:
+                print(p["user_name"], p["content"])
+            ```
+
         Args:
             participants: People to include — names, usernames, or user IDs.
                 At least 2 must resolve to known users.
@@ -28,16 +38,6 @@ class GroupsMixin:
         Returns:
             Dict with conversation_id, perspectives, participant_ids, and
             any unresolved identifiers.
-
-        Example:
-            ```python
-            result = client.group_converse(
-                participants=["ludo", "duy"],
-                topic="What's the best growth channel for B2B SaaS?",
-            )
-            for p in result["perspectives"]:
-                print(p["user_name"], p["content"])
-            ```
         """
         args: dict[str, Any] = {
             "participants": participants,
@@ -59,9 +59,6 @@ class GroupsMixin:
     ):
         """Stream a group conversation, yielding each perspective as it completes.
 
-        Yields dicts with keys: type, user_name, content, turn, user_id.
-        Final yield: ``{"type": "done", "conversation_id": str, "_done": True}``.
-
         Example:
             ```python
             for event in client.group_converse_stream(
@@ -73,6 +70,9 @@ class GroupsMixin:
                 else:
                     print(event["user_name"], event["content"])
             ```
+
+        Yields dicts with keys: type, user_name, content, turn, user_id.
+        Final yield: ``{"type": "done", "conversation_id": str, "_done": True}``.
         """
         payload: dict[str, Any] = {
             "participants": participants,
