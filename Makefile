@@ -4,13 +4,13 @@ install:
 	uv sync --extra dev
 
 test:
-	uv run --extra dev pytest
+	uv run --extra dev pytest -m 'not live'
 
 test-live:
 	uv run --extra dev pytest -m live -v
 
 test-cov:
-	uv run --extra dev pytest --cov=superme_sdk
+	uv run --extra dev pytest -m 'not live' --cov=superme_sdk
 
 lint:
 	uv run --extra dev ruff check superme_sdk/ tests/
