@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 
 class InterviewsMixin:
@@ -14,7 +15,7 @@ class InterviewsMixin:
             Poll :meth:`get_interview_status` for progress.
         """
         resp = self._rest_http.post(
-            "/api/v3/interview/start-agent",
+            "/api/v3/agent/interview/start",
             json={"role_id": role_id},
         )
         self._check_rest_response(resp)
@@ -53,8 +54,40 @@ class InterviewsMixin:
         self._check_rest_response(resp)
         return resp.json().get("interviews", [])
 
+    def send_interview_message(
+        self,
+        interview_id: str,
+        message: str,
+        *,
+        stage_number: int | None = None,
+        attachments: list[dict[str, Any]] | None = None,
+    ) -> dict:
+        """Send a candidate message during an AWAITING_INPUT stage.
+
+        Args:
+            interview_id: The interview session ID.
+            message: The candidate's message text.
+            stage_number: Optional stage number for manual-stage interviews.
+            attachments: Optional list of ``{gcs_path, filename, content_type}`` dicts.
+
+        Returns:
+            Dict with ``interview_id``, ``stage_name``, ``message`` (interviewer reply),
+            and ``next_manual_stage``.
+        """
+        payload: dict[str, Any] = {"message": message}
+        if stage_number is not None:
+            payload["stage_number"] = stage_number
+        if attachments is not None:
+            payload["attachments"] = attachments
+        resp = self._rest_http.post(
+            f"/api/v3/agent/interview/{interview_id}/message",
+            json=payload,
+        )
+        self._check_rest_response(resp)
+        return resp.json()
+
     def stream_interview(self, interview_id: str):
-        """Stream interview events via SSE from ``GET /api/v3/interview/{id}/stream``.
+        """Stream interview events via SSE from ``GET /api/v3/agent/interview/{id}/stream``.
 
         Yields dicts parsed from the SSE ``data:`` lines. Each dict has an
         ``event`` key (``"message"``, ``"status"``, or ``"stage_change"``).
@@ -65,7 +98,7 @@ class InterviewsMixin:
         terminal = {"completed", "scoring", "scored", "failed", "withdrawn"}
         with self._rest_http.stream(
             "GET",
-            f"/api/v3/interview/{interview_id}/stream",
+            f"/api/v3/agent/interview/{interview_id}/stream",
             headers={"Accept-Encoding": "identity"},
             timeout=None,
         ) as resp:

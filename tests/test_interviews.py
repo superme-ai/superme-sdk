@@ -36,6 +36,7 @@ class TestContractAllMethodsExist:
             "get_interview_transcript",
             "list_my_interviews",
             "stream_interview",
+            "send_interview_message",
         ]
         for name in expected:
             assert hasattr(SuperMeClient, name), f"SuperMeClient missing method: {name}"
@@ -45,7 +46,7 @@ class TestContractAllMethodsExist:
 class TestStartInterview:
     @respx.mock
     def test_start_interview_posts_correct_body(self):
-        route = respx.post(f"{REST_BASE}/api/v3/interview/start-agent").mock(
+        route = respx.post(f"{REST_BASE}/api/v3/agent/interview/start").mock(
             return_value=httpx.Response(
                 200, json={"interview_id": "iv_1", "status": "preparing"}
             )
@@ -62,7 +63,7 @@ class TestStartInterview:
 
     @respx.mock
     def test_start_interview_returns_response(self):
-        respx.post(f"{REST_BASE}/api/v3/interview/start-agent").mock(
+        respx.post(f"{REST_BASE}/api/v3/agent/interview/start").mock(
             return_value=httpx.Response(
                 200, json={"interview_id": "iv_1", "status": "preparing"}
             )
@@ -74,7 +75,7 @@ class TestStartInterview:
 
     @respx.mock
     def test_start_interview_4xx_raises(self):
-        respx.post(f"{REST_BASE}/api/v3/interview/start-agent").mock(
+        respx.post(f"{REST_BASE}/api/v3/agent/interview/start").mock(
             return_value=httpx.Response(422, json={"error": "invalid role"})
         )
         client = SuperMeClient(api_key=FAKE_JWT)
@@ -155,7 +156,7 @@ class TestStreamInterview:
     @respx.mock
     def test_stream_terminal_status_stops_after_one_event(self, status):
         content = f'data: {{"event": "status", "status": "{status}"}}\n\n'.encode()
-        respx.get(f"{REST_BASE}/api/v3/interview/iv_1/stream").mock(
+        respx.get(f"{REST_BASE}/api/v3/agent/interview/iv_1/stream").mock(
             return_value=httpx.Response(
                 200,
                 content=content,
@@ -174,7 +175,7 @@ class TestStreamInterview:
             b'data: {"event": "status", "status": "active"}\n\n'
             b'data: {"event": "status", "status": "completed"}\n\n'
         )
-        respx.get(f"{REST_BASE}/api/v3/interview/iv_1/stream").mock(
+        respx.get(f"{REST_BASE}/api/v3/agent/interview/iv_1/stream").mock(
             return_value=httpx.Response(
                 200,
                 content=content,
@@ -201,6 +202,58 @@ class TestStreamInterview:
         raw = match.group(1)
         found = {s.strip().strip('"').strip("'") for s in raw.split(",")}
         assert found == {"completed", "scoring", "scored", "failed", "withdrawn"}
+
+
+class TestSendInterviewMessage:
+    @respx.mock
+    def test_send_message_basic(self):
+        """send_interview_message POSTs to agent route with message in body."""
+        import json
+        route = respx.post(
+            f"{REST_BASE}/api/v3/agent/interview/iv_1/message"
+        ).mock(return_value=httpx.Response(200, json={"interview_id": "iv_1"}))
+        client = SuperMeClient(api_key=FAKE_JWT)
+        client.send_interview_message("iv_1", "Hello!")
+        body = json.loads(route.calls[0].request.content)
+        assert body["message"] == "Hello!"
+        assert "stage_number" not in body
+        assert "attachments" not in body
+        client.close()
+
+    @respx.mock
+    def test_send_message_with_stage_number(self):
+        import json
+        route = respx.post(f"{REST_BASE}/api/v3/agent/interview/iv_1/message").mock(
+            return_value=httpx.Response(200, json={})
+        )
+        client = SuperMeClient(api_key=FAKE_JWT)
+        client.send_interview_message("iv_1", "answer", stage_number=2)
+        body = json.loads(route.calls[0].request.content)
+        assert body["stage_number"] == 2
+        client.close()
+
+    @respx.mock
+    def test_send_message_with_attachments(self):
+        import json
+        route = respx.post(f"{REST_BASE}/api/v3/agent/interview/iv_1/message").mock(
+            return_value=httpx.Response(200, json={})
+        )
+        client = SuperMeClient(api_key=FAKE_JWT)
+        atts = [{"gcs_path": "gs://b/f.pdf", "filename": "cv.pdf", "content_type": "application/pdf"}]
+        client.send_interview_message("iv_1", "see attachment", attachments=atts)
+        body = json.loads(route.calls[0].request.content)
+        assert body["attachments"] == atts
+        client.close()
+
+    @respx.mock
+    def test_send_message_4xx_raises(self):
+        respx.post(f"{REST_BASE}/api/v3/agent/interview/iv_1/message").mock(
+            return_value=httpx.Response(400, json={"error": "bad request"})
+        )
+        client = SuperMeClient(api_key=FAKE_JWT)
+        with pytest.raises(RuntimeError):
+            client.send_interview_message("iv_1", "hi")
+        client.close()
 
 
 # ---------------------------------------------------------------------------
@@ -260,3 +313,25 @@ def test_live_list_companies_and_roles(live_rest_client):
     for role in roles:
         assert "id" in role, f"role missing id: {role}"
         assert "title" in role, f"role missing title: {role}"
+
+
+@pytest.mark.live
+def test_live_get_interview_status(live_rest_client):
+    """get_interview_status returns status dict for the first available interview."""
+    interviews = live_rest_client.list_my_interviews()
+    if not interviews:
+        pytest.skip("No interviews available for this account")
+    result = live_rest_client.get_interview_status(interviews[0]["interview_id"])
+    assert isinstance(result, dict)
+    assert "status" in result
+
+
+@pytest.mark.live
+def test_live_get_interview_transcript(live_rest_client):
+    """get_interview_transcript returns a transcript dict."""
+    interviews = live_rest_client.list_my_interviews()
+    if not interviews:
+        pytest.skip("No interviews available for this account")
+    result = live_rest_client.get_interview_transcript(interviews[0]["interview_id"])
+    assert isinstance(result, dict)
+    assert "transcript" in result
