@@ -90,6 +90,16 @@ class InterviewsMixin:
     ) -> dict:
         """Send a candidate message during an AWAITING_INPUT stage.
 
+        Example:
+            ```python
+            reply = client.send_interview_message(
+                "interview_abc123",
+                "I have 5 years of experience building distributed systems.",
+            )
+            print(reply["message"])  # interviewer's reply
+            print(reply["stage_name"])
+            ```
+
         Args:
             interview_id: The interview session ID.
             message: The candidate's message text.

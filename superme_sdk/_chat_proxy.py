@@ -32,27 +32,41 @@ class Completions:
     ) -> ChatCompletion:
         """Create a chat completion via the MCP ``ask`` tool.
 
-        Args:
-            messages: List of ``{"role": ..., "content": ...}`` dicts.
-            model: Model name (ignored by MCP, kept for interface compat).
-            username: Target SuperMe username (maps to MCP ``identifier``).
-            conversation_id: Continue an existing conversation.
-            max_tokens: Max response tokens (not used by MCP, kept for compat).
-            incognito: Ask anonymously.
-            response_format: Not supported via MCP (ignored).
-
-        Returns:
-            :class:`ChatCompletion` with ``.choices[0].message.content``
-            and ``.metadata["conversation_id"]``.
-
-        Example::
-
+        Example:
+            ```python
             response = client.chat.completions.create(
                 model="gpt-4",
                 messages=[{"role": "user", "content": "What is PMF?"}],
                 username="ludo",
             )
             print(response.choices[0].message.content)
+            print(response.metadata["conversation_id"])
+            ```
+
+        Note:
+            **OpenAI compat quirks** — this wraps the SuperMe MCP ``ask`` tool,
+            not a real OpenAI endpoint:
+
+            - ``model`` — ignored. The SuperMe AI determines the model.
+            - ``messages`` — only the last ``role: user`` message is sent.
+              Prior messages in the list are **not** forwarded; pass
+              ``conversation_id`` to continue a thread.
+            - ``max_tokens`` — ignored by the MCP backend.
+            - ``response_format`` — not supported, ignored.
+
+        Args:
+            messages: List of ``{"role": ..., "content": ...}`` dicts.
+                Only the last user message is sent to the API.
+            model: Ignored — kept for OpenAI interface compatibility.
+            username: Target SuperMe username.
+            conversation_id: Continue an existing conversation.
+            max_tokens: Ignored — kept for OpenAI interface compatibility.
+            incognito: Ask anonymously.
+            response_format: Not supported, ignored.
+
+        Returns:
+            :class:`ChatCompletion` with ``.choices[0].message.content``
+            and ``.metadata["conversation_id"]``.
         """
         # Backward-compat: pre-hardening callers used extra_body={"username": ...}
         # to pass routing params through the OpenAI-compatible interface.

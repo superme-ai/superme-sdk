@@ -58,26 +58,28 @@ class ConversationsMixin:
     ) -> tuple:
         """Ask with conversation history.
 
+        Deprecated:
+            Use :meth:`ask` with ``conversation_id`` instead.
+            Only the last user message in ``messages`` is actually sent;
+            the rest of the list is ignored.
+
         Example:
             ```python
-            messages = [{"role": "user", "content": "What is growth hacking?"}]
-            answer, conv_id = client.ask_with_history(messages, username="ludo")
-
-            # follow-up in the same conversation
-            messages += [
-                {"role": "assistant", "content": answer},
-                {"role": "user", "content": "Give me 3 examples"},
-            ]
-            answer2, _ = client.ask_with_history(
-                messages, username="ludo", conversation_id=conv_id
+            # Preferred — use ask() with conversation_id
+            answer = client.ask("What is growth hacking?", username="ludo")
+            answer2 = client.ask(
+                "Give me 3 examples",
+                username="ludo",
+                conversation_id=conv_id,
             )
             ```
 
         Args:
             messages: List of ``{"role": ..., "content": ...}`` dicts.
+                Only the last user message is sent; prior messages are ignored.
             username: Target SuperMe username.
             conversation_id: Continue an existing conversation.
-            max_tokens: Max response tokens.
+            max_tokens: Ignored.
             incognito: Ask anonymously.
 
         Returns:
