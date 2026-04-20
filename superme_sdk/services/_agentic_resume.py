@@ -21,7 +21,13 @@ class AgenticResumeMixin:
         """
         resp = self._rest_http.get("/api/v3/agentic-resume")
         if resp.status_code == 404:
-            return {"structured_data": None}
+            return {
+                "structured_data": None,
+                "raw_markdown": None,
+                "html": None,
+                "created_at": None,
+                "updated_at": None,
+            }
         self._check_rest_response(resp)
         return resp.json()
 

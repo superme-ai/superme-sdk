@@ -84,13 +84,17 @@ class TestGetAgenticResume:
 
     @respx.mock
     def test_get_resume_404_returns_empty(self):
-        """404 means no resume exists yet — should return {structured_data: None}."""
+        """404 means no resume exists yet — should return a full sentinel dict."""
         respx.get(f"{REST_BASE}/api/v3/agentic-resume").mock(
             return_value=httpx.Response(404, json={"detail": "not found"})
         )
         client = SuperMeClient(api_key=FAKE_JWT)
         result = client.get_agentic_resume()
-        assert result == {"structured_data": None}
+        assert result["structured_data"] is None
+        assert result["raw_markdown"] is None
+        assert result["html"] is None
+        assert result["created_at"] is None
+        assert result["updated_at"] is None
         client.close()
 
     @respx.mock
@@ -137,6 +141,16 @@ class TestRegenerateAgenticResume:
         """404 from regenerate means no raw markdown stored — should raise."""
         respx.post(f"{REST_BASE}/api/v3/agentic-resume/regenerate").mock(
             return_value=httpx.Response(404, json={"detail": "not found"})
+        )
+        client = SuperMeClient(api_key=FAKE_JWT)
+        with pytest.raises(RuntimeError):
+            client.regenerate_agentic_resume()
+        client.close()
+
+    @respx.mock
+    def test_regenerate_5xx_raises(self):
+        respx.post(f"{REST_BASE}/api/v3/agentic-resume/regenerate").mock(
+            return_value=httpx.Response(500, json={"error": "synthesis failed"})
         )
         client = SuperMeClient(api_key=FAKE_JWT)
         with pytest.raises(RuntimeError):
