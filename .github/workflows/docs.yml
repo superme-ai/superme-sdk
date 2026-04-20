@@ -19,12 +19,5 @@ jobs:
           python-version: "3.11"
       - name: Install docs dependencies
         run: uv pip install --system -r docs-src/requirements.txt
-      - name: Build docs
-        run: mkdocs build
-      - name: Commit built docs
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/
-          git diff --staged --quiet || git commit -m "docs: rebuild [skip ci]"
-          git push
+      - name: Deploy to docs branch
+        run: mkdocs gh-deploy --force --remote-branch docs
