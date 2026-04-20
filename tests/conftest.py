@@ -11,6 +11,7 @@ Strategy
 
 import os
 from pathlib import Path
+from typing import Optional
 
 import httpx
 import pytest
@@ -71,7 +72,7 @@ def backend_url() -> str:
 
 
 @pytest.fixture(scope="session")
-def live_api_key() -> str | None:
+def live_api_key() -> Optional[str]:
     return os.getenv("SUPERME_API_KEY") or None
 
 

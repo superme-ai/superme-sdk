@@ -270,8 +270,8 @@ class HttpMixin:
             )
         return body.get("result", {})
 
-    def _mcp_tool_call(self, tool_name: str, arguments: dict) -> dict:
-        """Call an MCP tool and return the parsed JSON content."""
+    def _mcp_tool_call(self, tool_name: str, arguments: dict):
+        """Call an MCP tool and return the parsed JSON content (dict or list)."""
         result = self._mcp_request(
             "tools/call",
             {"name": tool_name, "arguments": arguments},
@@ -282,12 +282,7 @@ class HttpMixin:
             return {}
         raw_text = content_list[0].get("text")
         text = (raw_text or "").strip() or "{}"
-        parsed = json.loads(text)
-        if not isinstance(parsed, dict):
-            raise TypeError(
-                f"Expected MCP tool to return a JSON object, got {type(parsed).__name__}"
-            )
-        return parsed
+        return json.loads(text)
 
     @staticmethod
     def _parse_sse_json(text: str) -> dict:

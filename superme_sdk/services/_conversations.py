@@ -101,6 +101,8 @@ class ConversationsMixin:
             List of conversation summary dicts.
         """
         result = self._mcp_tool_call("list_conversations", {"limit": limit})
+        if isinstance(result, list):
+            return result
         conversations = result.get("conversations", [])
         return conversations if isinstance(conversations, list) else []
 

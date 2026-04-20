@@ -92,6 +92,27 @@ set -a && source .env && set +a
 python examples/simple_example.py
 ```
 
+## Development
+
+```bash
+make install       # set up virtualenv with dev deps (run once)
+
+make test          # unit tests — mocked, no network, always fast
+make test-live     # e2e tests — hit real endpoints (requires SUPERME_API_KEY)
+make test-cov      # unit tests with coverage report
+make check         # lint + typecheck + unit tests
+make fmt           # auto-format with ruff
+```
+
+**Unit tests** run on every commit via CI and need no credentials.
+
+**Live / e2e tests** hit the real production API — use them to verify integration changes end-to-end:
+
+```bash
+cp .env.example .env   # fill in SUPERME_API_KEY
+make test-live
+```
+
 ## API Reference
 
 ### `SuperMeClient(api_key, base_url="https://mcp.superme.ai", rest_base_url="https://www.superme.ai", timeout=120.0)`
