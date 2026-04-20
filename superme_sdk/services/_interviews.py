@@ -6,7 +6,6 @@ import json
 
 
 class InterviewsMixin:
-
     def start_interview(self, role_id: str) -> dict:
         """Start a background agent interview via REST API.
 
@@ -60,10 +59,10 @@ class InterviewsMixin:
         Yields dicts parsed from the SSE ``data:`` lines. Each dict has an
         ``event`` key (``"message"``, ``"status"``, or ``"stage_change"``).
 
-        Terminal statuses (``completed``, ``scoring``, ``scored``) cause the
-        generator to return.
+        Terminal statuses (``completed``, ``scoring``, ``scored``, ``failed``,
+        ``withdrawn``) cause the generator to return.
         """
-        terminal = {"completed", "scoring", "scored"}
+        terminal = {"completed", "scoring", "scored", "failed", "withdrawn"}
         with self._rest_http.stream(
             "GET",
             f"/api/v3/interview/{interview_id}/stream",
