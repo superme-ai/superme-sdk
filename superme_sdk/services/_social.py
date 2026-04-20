@@ -15,6 +15,13 @@ class SocialMixin:
 
         Returns:
             Dict with ``connected_accounts`` and ``connected_blogs`` fields.
+
+        Example:
+            ```python
+            accounts = client.get_connected_accounts()
+            for acc in accounts["connected_accounts"]:
+                print(acc["platform"], acc["handle"])
+            ```
         """
         params: dict[str, Any] = {}
         uid = user_id or self.user_id
@@ -40,6 +47,12 @@ class SocialMixin:
 
         Returns:
             Dict with ``status`` field.
+
+        Example:
+            ```python
+            client.connect_social("x", "myhandle")
+            client.connect_social("beehiiv", "my-pub", token="beehiiv_token")
+            ```
         """
         body: dict[str, Any] = {"platform": platform, "handle": handle}
         if token is not None:

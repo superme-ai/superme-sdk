@@ -15,19 +15,31 @@ from superme_sdk import SuperMeClient
 
 client = SuperMeClient(api_key="your-superme-api-key")
 
-# OpenAI-style chat completions
-response = client.chat.completions.create(
-    model="gpt-4",
-    messages=[{"role": "user", "content": "What is PMF?"}],
+# ask a question to a user's AI
+answer = client.ask("What is your take on product-market fit?", username="ludo")
+print(answer)
+
+# look up a profile
+profile = client.get_profile("ludo")
+
+# get perspectives from multiple people at once
+result = client.perspective_search("What is the best growth channel for B2B?")
+print(result["answer"])
+
+# multi-turn conversation
+answer1, conv_id = client.ask_with_history(
+    [{"role": "user", "content": "What is content marketing?"}],
     username="ludo",
 )
-print(response.choices[0].message.content)
-
-# Convenience helper
-answer = client.ask("What is PMF?", username="ludo")
-
-# Profile lookup
-profile = client.get_profile("ludo")
+answer2, _ = client.ask_with_history(
+    [
+        {"role": "user", "content": "What is content marketing?"},
+        {"role": "assistant", "content": answer1},
+        {"role": "user", "content": "How does it differ from SEO?"},
+    ],
+    username="ludo",
+    conversation_id=conv_id,
+)
 ```
 
 ## API Reference

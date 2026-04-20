@@ -28,6 +28,16 @@ class GroupsMixin:
         Returns:
             Dict with conversation_id, perspectives, participant_ids, and
             any unresolved identifiers.
+
+        Example:
+            ```python
+            result = client.group_converse(
+                participants=["ludo", "duy"],
+                topic="What's the best growth channel for B2B SaaS?",
+            )
+            for p in result["perspectives"]:
+                print(p["user_name"], p["content"])
+            ```
         """
         args: dict[str, Any] = {
             "participants": participants,
@@ -50,7 +60,19 @@ class GroupsMixin:
         """Stream a group conversation, yielding each perspective as it completes.
 
         Yields dicts with keys: type, user_name, content, turn, user_id.
-        Final yield: {"type": "done", "conversation_id": str, "_done": True}.
+        Final yield: ``{"type": "done", "conversation_id": str, "_done": True}``.
+
+        Example:
+            ```python
+            for event in client.group_converse_stream(
+                participants=["ludo", "duy"],
+                topic="What is the future of AI agents?",
+            ):
+                if event.get("_done"):
+                    print("conversation_id:", event["conversation_id"])
+                else:
+                    print(event["user_name"], event["content"])
+            ```
         """
         payload: dict[str, Any] = {
             "participants": participants,

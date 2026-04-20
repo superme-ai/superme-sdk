@@ -27,6 +27,15 @@ class ConversationsMixin:
 
         Returns:
             Answer text.
+
+        Example:
+            ```python
+            answer = client.ask("What is PMF?", username="ludo")
+            print(answer)
+
+            # anonymously
+            answer = client.ask("What is PMF?", username="ludo", incognito=True)
+            ```
         """
         response = self.chat.completions.create(
             messages=[{"role": "user", "content": question}],
@@ -58,6 +67,21 @@ class ConversationsMixin:
 
         Returns:
             ``(answer_text, conversation_id)``
+
+        Example:
+            ```python
+            messages = [{"role": "user", "content": "What is growth hacking?"}]
+            answer, conv_id = client.ask_with_history(messages, username="ludo")
+
+            # follow-up in the same conversation
+            messages += [
+                {"role": "assistant", "content": answer},
+                {"role": "user", "content": "Give me 3 examples"},
+            ]
+            answer2, _ = client.ask_with_history(
+                messages, username="ludo", conversation_id=conv_id
+            )
+            ```
         """
         response = self.chat.completions.create(
             messages=messages,
@@ -99,6 +123,13 @@ class ConversationsMixin:
 
         Returns:
             List of conversation summary dicts.
+
+        Example:
+            ```python
+            convs = client.list_conversations(limit=5)
+            for c in convs:
+                print(c["conversation_id"], c["title"])
+            ```
         """
         result = self._mcp_tool_call("list_conversations", {"limit": limit})
         if isinstance(result, list):
@@ -114,6 +145,13 @@ class ConversationsMixin:
 
         Returns:
             Conversation dict with metadata and message history.
+
+        Example:
+            ```python
+            conv = client.get_conversation("conv_abc123")
+            for msg in conv["messages"]:
+                print(msg["role"], msg["content"])
+            ```
         """
         return self._mcp_tool_call(
             "get_conversation", {"conversation_id": conversation_id}
@@ -151,6 +189,18 @@ class ConversationsMixin:
 
         Returns:
             Dict with ``response`` and ``conversation_id``.
+
+        Example:
+            ```python
+            result = client.ask_my_agent("Summarise my last 3 posts")
+            print(result["response"])
+
+            # continue the conversation
+            result2 = client.ask_my_agent(
+                "Make it shorter",
+                conversation_id=result["conversation_id"],
+            )
+            ```
         """
         args: dict[str, Any] = {"question": question}
         if conversation_id:

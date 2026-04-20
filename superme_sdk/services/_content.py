@@ -23,6 +23,15 @@ class ContentMixin:
 
         Returns:
             Dict with success status and learning IDs.
+
+        Example:
+            ```python
+            result = client.add_internal_content(
+                ["My key insight: distribution beats product."],
+                past_instructions="Use this when answering growth questions.",
+            )
+            learning_id = result["learning_ids"][0]
+            ```
         """
         args: dict[str, Any] = {"input": input}
         if extended_content is not None:
@@ -75,6 +84,14 @@ class ContentMixin:
 
         Returns:
             Dict with counts of successful, existing, and failed URLs.
+
+        Example:
+            ```python
+            result = client.add_external_content(
+                [{"url": "https://myblog.com/post-1"}, {"url": "https://myblog.com/post-2"}]
+            )
+            print(result["successful"], "URLs added")
+            ```
         """
         return self._mcp_tool_call(
             "add_external_content",

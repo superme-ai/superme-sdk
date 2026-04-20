@@ -13,6 +13,12 @@ class InterviewsMixin:
         Returns:
             Dict with ``interview_id`` and ``status`` (initially ``"preparing"``).
             Poll :meth:`get_interview_status` for progress.
+
+        Example:
+            ```python
+            session = client.start_interview("role_abc123")
+            interview_id = session["interview_id"]
+            ```
         """
         resp = self._rest_http.post(
             "/api/v3/agent/interview/start",
@@ -26,6 +32,12 @@ class InterviewsMixin:
 
         Returns:
             Dict with ``status``, ``stages``, and other session info.
+
+        Example:
+            ```python
+            status = client.get_interview_status("interview_abc123")
+            print(status["status"])  # "preparing", "in_progress", "completed", ...
+            ```
         """
         resp = self._rest_http.get(f"/api/v3/interview/{interview_id}/status")
         self._check_rest_response(resp)
@@ -46,6 +58,13 @@ class InterviewsMixin:
 
         Returns:
             List of interview summary dicts.
+
+        Example:
+            ```python
+            interviews = client.list_my_interviews()
+            for i in interviews:
+                print(i["interview_id"], i["status"])
+            ```
         """
         uid = self.user_id
         if not uid:
@@ -94,6 +113,15 @@ class InterviewsMixin:
 
         Terminal statuses (``completed``, ``scoring``, ``scored``, ``failed``,
         ``withdrawn``) cause the generator to return.
+
+        Example:
+            ```python
+            for event in client.stream_interview("interview_abc123"):
+                if event.get("event") == "message":
+                    print(event["content"])
+                elif event.get("event") == "status":
+                    print("status:", event["status"])
+            ```
         """
         terminal = {"completed", "scoring", "scored", "failed", "withdrawn"}
         with self._rest_http.stream(

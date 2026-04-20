@@ -15,6 +15,13 @@ class ProfilesMixin:
 
         Returns:
             Profile dict.
+
+        Example:
+            ```python
+            profile = client.get_profile("ludo")
+            # or your own profile
+            me = client.get_profile()
+            ```
         """
         args: dict[str, Any] = {}
         if identifier:
@@ -30,6 +37,11 @@ class ProfilesMixin:
 
         Returns:
             Dict with match results.
+
+        Example:
+            ```python
+            results = client.find_user_by_name("ludo")
+            ```
         """
         return self._mcp_tool_call(
             "find_user_by_name", {"name": name, "limit": limit}
@@ -46,6 +58,12 @@ class ProfilesMixin:
 
         Returns:
             Dict with per-name matches and resolved_user_ids map.
+
+        Example:
+            ```python
+            result = client.find_users_by_names(["ludo", "duy"])
+            ids = result["resolved_user_ids"]
+            ```
         """
         return self._mcp_tool_call(
             "find_users_by_names",
@@ -60,5 +78,13 @@ class ProfilesMixin:
 
         Returns:
             Dict with synthesized answer and individual viewpoints.
+
+        Example:
+            ```python
+            result = client.perspective_search("What is product-market fit?")
+            print(result["answer"])
+            for view in result["viewpoints"]:
+                print(view["username"], view["content"])
+            ```
         """
         return self._mcp_tool_call("perspective_search", {"question": question})
