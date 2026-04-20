@@ -17,4 +17,5 @@ jobs:
       - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
         with:
           python-version: "3.11"
-      - run: uv run --extra docs mkdocs gh-deploy --force
+      - run: uv pip install --system -r docs/requirements.txt
+      - run: mkdocs gh-deploy --force
