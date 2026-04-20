@@ -86,26 +86,6 @@ class InterviewsMixin:
         self._check_rest_response(resp)
         return resp.json()
 
-    def submit_interview(self, interview_id: str) -> dict:
-        """Submit a completed interview for scoring.
-
-        Returns:
-            Dict with submission confirmation.
-        """
-        resp = self._rest_http.post(f"/api/v3/interview/{interview_id}/submit")
-        self._check_rest_response(resp)
-        return resp.json()
-
-    def withdraw_interview(self, interview_id: str) -> dict:
-        """Withdraw from an interview session.
-
-        Returns:
-            Dict with withdrawal confirmation.
-        """
-        resp = self._rest_http.post(f"/api/v3/interview/{interview_id}/withdraw")
-        self._check_rest_response(resp)
-        return resp.json()
-
     def stream_interview(self, interview_id: str):
         """Stream interview events via SSE from ``GET /api/v3/agent/interview/{id}/stream``.
 

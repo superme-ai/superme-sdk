@@ -37,8 +37,6 @@ class TestContractAllMethodsExist:
             "list_my_interviews",
             "stream_interview",
             "send_interview_message",
-            "submit_interview",
-            "withdraw_interview",
         ]
         for name in expected:
             assert hasattr(SuperMeClient, name), f"SuperMeClient missing method: {name}"
@@ -255,52 +253,6 @@ class TestSendInterviewMessage:
         client = SuperMeClient(api_key=FAKE_JWT)
         with pytest.raises(RuntimeError):
             client.send_interview_message("iv_1", "hi")
-        client.close()
-
-
-class TestSubmitInterview:
-    @respx.mock
-    def test_submit_posts_correct_route(self):
-        route = respx.post(f"{REST_BASE}/api/v3/interview/iv_1/submit").mock(
-            return_value=httpx.Response(200, json={"status": "submitted"})
-        )
-        client = SuperMeClient(api_key=FAKE_JWT)
-        result = client.submit_interview("iv_1")
-        assert route.called
-        assert result["status"] == "submitted"
-        client.close()
-
-    @respx.mock
-    def test_submit_4xx_raises(self):
-        respx.post(f"{REST_BASE}/api/v3/interview/iv_1/submit").mock(
-            return_value=httpx.Response(403, json={"error": "forbidden"})
-        )
-        client = SuperMeClient(api_key=FAKE_JWT)
-        with pytest.raises(RuntimeError):
-            client.submit_interview("iv_1")
-        client.close()
-
-
-class TestWithdrawInterview:
-    @respx.mock
-    def test_withdraw_posts_correct_route(self):
-        route = respx.post(f"{REST_BASE}/api/v3/interview/iv_1/withdraw").mock(
-            return_value=httpx.Response(200, json={"status": "withdrawn"})
-        )
-        client = SuperMeClient(api_key=FAKE_JWT)
-        result = client.withdraw_interview("iv_1")
-        assert route.called
-        assert result["status"] == "withdrawn"
-        client.close()
-
-    @respx.mock
-    def test_withdraw_4xx_raises(self):
-        respx.post(f"{REST_BASE}/api/v3/interview/iv_1/withdraw").mock(
-            return_value=httpx.Response(404, json={"error": "not found"})
-        )
-        client = SuperMeClient(api_key=FAKE_JWT)
-        with pytest.raises(RuntimeError):
-            client.withdraw_interview("iv_1")
         client.close()
 
 
