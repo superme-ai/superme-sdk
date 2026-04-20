@@ -151,7 +151,7 @@ class TestListMyInterviews:
 
 
 class TestStreamInterview:
-    @pytest.mark.parametrize("status", ["completed", "scoring", "scored"])
+    @pytest.mark.parametrize("status", ["completed", "scoring", "scored", "failed", "withdrawn"])
     @respx.mock
     def test_stream_terminal_status_stops_after_one_event(self, status):
         content = f'data: {{"event": "status", "status": "{status}"}}\n\n'.encode()
@@ -200,7 +200,7 @@ class TestStreamInterview:
         assert match, "Could not find terminal set in stream_interview source"
         raw = match.group(1)
         found = {s.strip().strip('"').strip("'") for s in raw.split(",")}
-        assert found == {"completed", "scoring", "scored"}
+        assert found == {"completed", "scoring", "scored", "failed", "withdrawn"}
 
 
 # ---------------------------------------------------------------------------
