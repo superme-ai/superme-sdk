@@ -16,6 +16,15 @@ class ContentMixin:
     ) -> dict:
         """Save notes or knowledge to your personal library.
 
+        Example:
+            ```python
+            result = client.add_internal_content(
+                ["My key insight: distribution beats product."],
+                past_instructions="Use this when answering growth questions.",
+            )
+            learning_id = result["learning_ids"][0]
+            ```
+
         Args:
             input: Text blocks to save.
             extended_content: Optional longer-form content.
@@ -40,6 +49,14 @@ class ContentMixin:
         past_instructions: Optional[str] = None,
     ) -> dict:
         """Update an existing note in your library.
+
+        Example:
+            ```python
+            client.update_internal_content(
+                "learning_abc123",
+                user_input=["Updated insight: community beats ads at scale."],
+            )
+            ```
 
         Args:
             learning_id: The learning ID to update.
@@ -68,6 +85,14 @@ class ContentMixin:
     ) -> dict:
         """Submit URLs to be crawled and added to your knowledge base.
 
+        Example:
+            ```python
+            result = client.add_external_content(
+                [{"url": "https://myblog.com/post-1"}, {"url": "https://myblog.com/post-2"}]
+            )
+            print(result["successful"], "URLs added")
+            ```
+
         Args:
             urls: List of URL objects. Each must have a ``"url"`` key.
             reference: Show citations from this content in AI answers.
@@ -83,6 +108,12 @@ class ContentMixin:
 
     def check_uncrawled_urls(self, urls: list[str]) -> dict:
         """Check which URLs are not yet in your knowledge base.
+
+        Example:
+            ```python
+            result = client.check_uncrawled_urls(["https://myblog.com/post-1"])
+            print(result["uncrawled_urls"])
+            ```
 
         Args:
             urls: URLs to check.

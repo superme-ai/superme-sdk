@@ -8,6 +8,13 @@ class CompaniesMixin:
     def list_companies(self, *, active_only: bool = True) -> list[dict]:
         """List companies with active roles.
 
+        Example:
+            ```python
+            companies = client.list_companies()
+            for c in companies:
+                print(c["name"], c["company_id"])
+            ```
+
         Returns:
             List of company dicts with ``company_id``.
         """
@@ -17,6 +24,13 @@ class CompaniesMixin:
 
     def list_company_roles(self, company_id: str) -> list[dict]:
         """List active roles for a company.
+
+        Example:
+            ```python
+            roles = client.list_company_roles("company_abc123")
+            for r in roles:
+                print(r["title"], r["location"])
+            ```
 
         Returns:
             List of role dicts (id, title, summary, location, etc.).
@@ -29,6 +43,13 @@ class CompaniesMixin:
 
     def list_active_roles(self, *, limit: int = 10) -> list[dict]:
         """List active roles across all companies.
+
+        Example:
+            ```python
+            roles = client.list_active_roles(limit=5)
+            for r in roles:
+                print(r["title"], r["company_name"])
+            ```
 
         Fetches companies first, then collects roles up to *limit*.
 

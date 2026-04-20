@@ -10,6 +10,13 @@ class SocialMixin:
     def get_connected_accounts(self, user_id: Optional[str] = None) -> dict:
         """Return connected social accounts for the authenticated user.
 
+        Example:
+            ```python
+            accounts = client.get_connected_accounts()
+            for acc in accounts["connected_accounts"]:
+                print(acc["platform"], acc["handle"])
+            ```
+
         Args:
             user_id: Target user ID. Omit to use the authenticated user.
 
@@ -32,6 +39,12 @@ class SocialMixin:
     ) -> dict:
         """Connect a social platform account.
 
+        Example:
+            ```python
+            client.connect_social("x", "myhandle")
+            client.connect_social("beehiiv", "my-pub", token="beehiiv_token")
+            ```
+
         Args:
             platform: Platform name — one of: medium, substack, x, instagram,
                 youtube, beehiiv, google_drive, linkedin, github, notion.
@@ -51,6 +64,11 @@ class SocialMixin:
     def disconnect_social(self, platform: str) -> dict:
         """Disconnect a social platform account.
 
+        Example:
+            ```python
+            client.disconnect_social("x")
+            ```
+
         Args:
             platform: Platform name to disconnect.
 
@@ -66,6 +84,11 @@ class SocialMixin:
     def connect_blog(self, url: str) -> dict:
         """Connect a custom blog or website.
 
+        Example:
+            ```python
+            client.connect_blog("https://myblog.com")
+            ```
+
         Args:
             url: Full URL of the blog (e.g. ``https://myblog.com``).
                  Substack, Medium, Beehiiv, YouTube, and GitHub URLs are rejected.
@@ -79,6 +102,11 @@ class SocialMixin:
 
     def disconnect_blog(self, url: str) -> dict:
         """Disconnect a custom blog.
+
+        Example:
+            ```python
+            client.disconnect_blog("https://myblog.com")
+            ```
 
         Args:
             url: Full URL of the blog to disconnect.

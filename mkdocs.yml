@@ -1,0 +1,60 @@
+site_name: SuperMe SDK
+site_description: Python SDK for the SuperMe AI API
+site_url: https://superme-ai.github.io/superme-sdk/
+repo_url: https://github.com/superme-ai/superme-sdk
+repo_name: superme-ai/superme-sdk
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - content.code.copy
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: true
+            show_signature_annotations: true
+            separate_signature: true
+            members_order: source
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+
+nav:
+  - Home: index.md
+  - API Reference:
+    - Authentication: api/auth.md
+    - Client: api/client.md
+    - Models: api/models.md
+    - Conversations: api/services/conversations.md
+    - Profiles: api/services/profiles.md
+    - Groups: api/services/groups.md
+    - Companies & Roles: api/services/companies.md
+    - Interviews: api/services/interviews.md
+    - Content: api/services/content.md
+    - Social: api/services/social.md
+    - OpenAI-compatible chat: api/chat.md
+    - Low-level MCP: api/low_level.md

@@ -10,6 +10,12 @@ class InterviewsMixin:
     def start_interview(self, role_id: str) -> dict:
         """Start a background agent interview via REST API.
 
+        Example:
+            ```python
+            session = client.start_interview("role_abc123")
+            interview_id = session["interview_id"]
+            ```
+
         Returns:
             Dict with ``interview_id`` and ``status`` (initially ``"preparing"``).
             Poll :meth:`get_interview_status` for progress.
@@ -24,6 +30,12 @@ class InterviewsMixin:
     def get_interview_status(self, interview_id: str) -> dict:
         """Poll interview status.
 
+        Example:
+            ```python
+            status = client.get_interview_status("interview_abc123")
+            print(status["status"])  # "preparing", "in_progress", "completed", ...
+            ```
+
         Returns:
             Dict with ``status``, ``stages``, and other session info.
         """
@@ -34,6 +46,13 @@ class InterviewsMixin:
     def get_interview_transcript(self, interview_id: str) -> dict:
         """Get the full transcript for an interview.
 
+        Example:
+            ```python
+            transcript = client.get_interview_transcript("interview_abc123")
+            for stage in transcript["transcript"]:
+                print(stage)
+            ```
+
         Returns:
             Dict with ``transcript`` list of stages and messages.
         """
@@ -43,6 +62,13 @@ class InterviewsMixin:
 
     def list_my_interviews(self) -> list[dict]:
         """List interviews for the authenticated user.
+
+        Example:
+            ```python
+            interviews = client.list_my_interviews()
+            for i in interviews:
+                print(i["interview_id"], i["status"])
+            ```
 
         Returns:
             List of interview summary dicts.
@@ -63,6 +89,16 @@ class InterviewsMixin:
         attachments: list[dict[str, Any]] | None = None,
     ) -> dict:
         """Send a candidate message during an AWAITING_INPUT stage.
+
+        Example:
+            ```python
+            reply = client.send_interview_message(
+                "interview_abc123",
+                "I have 5 years of experience building distributed systems.",
+            )
+            print(reply["message"])  # interviewer's reply
+            print(reply["stage_name"])
+            ```
 
         Args:
             interview_id: The interview session ID.
@@ -88,6 +124,15 @@ class InterviewsMixin:
 
     def stream_interview(self, interview_id: str):
         """Stream interview events via SSE from ``GET /api/v3/agent/interview/{id}/stream``.
+
+        Example:
+            ```python
+            for event in client.stream_interview("interview_abc123"):
+                if event.get("event") == "message":
+                    print(event["content"])
+                elif event.get("event") == "status":
+                    print("status:", event["status"])
+            ```
 
         Yields dicts parsed from the SSE ``data:`` lines. Each dict has an
         ``event`` key (``"message"``, ``"status"``, or ``"stage_change"``).

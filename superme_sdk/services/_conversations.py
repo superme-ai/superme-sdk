@@ -18,6 +18,15 @@ class ConversationsMixin:
     ) -> str:
         """Ask a single question.
 
+        Example:
+            ```python
+            answer = client.ask("What is PMF?", username="ludo")
+            print(answer)
+
+            # anonymously
+            answer = client.ask("What is PMF?", username="ludo", incognito=True)
+            ```
+
         Args:
             question: The question to ask.
             username: Target SuperMe username.
@@ -49,11 +58,28 @@ class ConversationsMixin:
     ) -> tuple:
         """Ask with conversation history.
 
+        Deprecated:
+            Use :meth:`ask` with ``conversation_id`` instead.
+            Only the last user message in ``messages`` is actually sent;
+            the rest of the list is ignored.
+
+        Example:
+            ```python
+            # Preferred — use ask() with conversation_id
+            answer = client.ask("What is growth hacking?", username="ludo")
+            answer2 = client.ask(
+                "Give me 3 examples",
+                username="ludo",
+                conversation_id=conv_id,
+            )
+            ```
+
         Args:
             messages: List of ``{"role": ..., "content": ...}`` dicts.
+                Only the last user message is sent; prior messages are ignored.
             username: Target SuperMe username.
             conversation_id: Continue an existing conversation.
-            max_tokens: Max response tokens.
+            max_tokens: Ignored.
             incognito: Ask anonymously.
 
         Returns:
@@ -73,6 +99,11 @@ class ConversationsMixin:
     def mcp_tool_call(self, tool_name: str, arguments: dict) -> dict:
         """Call any MCP tool by name and return the parsed result.
 
+        Example:
+            ```python
+            result = client.mcp_tool_call("get_profile", {"identifier": "ludo"})
+            ```
+
         Args:
             tool_name: MCP tool name (e.g. ``"get_profile"``).
             arguments: Tool arguments dict.
@@ -85,6 +116,13 @@ class ConversationsMixin:
     def mcp_list_tools(self) -> list[dict]:
         """List all available MCP tools.
 
+        Example:
+            ```python
+            tools = client.mcp_list_tools()
+            for t in tools:
+                print(t["name"])
+            ```
+
         Returns:
             List of tool definitions.
         """
@@ -93,6 +131,13 @@ class ConversationsMixin:
 
     def list_conversations(self, *, limit: int = 20) -> list[dict]:
         """Return the authenticated user's most recent conversations.
+
+        Example:
+            ```python
+            convs = client.list_conversations(limit=5)
+            for c in convs:
+                print(c["conversation_id"], c["title"])
+            ```
 
         Args:
             limit: Maximum number of conversations to return.
@@ -108,6 +153,13 @@ class ConversationsMixin:
 
     def get_conversation(self, conversation_id: str) -> dict:
         """Fetch full details of a single conversation, including all messages.
+
+        Example:
+            ```python
+            conv = client.get_conversation("conv_abc123")
+            for msg in conv["messages"]:
+                print(msg["role"], msg["content"])
+            ```
 
         Args:
             conversation_id: The conversation ID (from list_conversations).
@@ -127,6 +179,15 @@ class ConversationsMixin:
     ):
         """Stream a response from your SuperMe AI agent.
 
+        Example:
+            ```python
+            for chunk in client.ask_my_agent_stream("Summarise my last 3 posts"):
+                if isinstance(chunk, str):
+                    print(chunk, end="", flush=True)
+                elif isinstance(chunk, dict) and chunk.get("_done"):
+                    conv_id = chunk["conversation_id"]
+            ```
+
         Yields string chunks as they arrive from the server via SSE.
         The last item is always a dict
         ``{"conversation_id": ..., "_done": True}`` so callers can capture
@@ -144,6 +205,18 @@ class ConversationsMixin:
         conversation_id: Optional[str] = None,
     ) -> dict:
         """Talk to your own SuperMe AI agent.
+
+        Example:
+            ```python
+            result = client.ask_my_agent("Summarise my last 3 posts")
+            print(result["response"])
+
+            # continue the conversation
+            result2 = client.ask_my_agent(
+                "Make it shorter",
+                conversation_id=result["conversation_id"],
+            )
+            ```
 
         Args:
             question: Your message to the agent.
