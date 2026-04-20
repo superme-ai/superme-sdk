@@ -1,5 +1,4 @@
 site_name: SuperMe SDK
-docs_dir: docs-src
 site_description: Python SDK for the SuperMe AI API
 site_url: https://superme-ai.github.io/superme-sdk/
 repo_url: https://github.com/superme-ai/superme-sdk

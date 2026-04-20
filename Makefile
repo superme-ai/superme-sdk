@@ -24,10 +24,10 @@ typecheck:
 check: lint typecheck test
 
 docs:
-	uv pip install -r docs-src/requirements.txt && mkdocs build
+	uv pip install -r docs/requirements.txt && mkdocs build
 
 docs-serve:
-	uv pip install -r docs-src/requirements.txt && mkdocs serve
+	uv pip install -r docs/requirements.txt && mkdocs serve
 
 clean:
 	rm -rf dist/ build/ *.egg-info .pytest_cache .coverage htmlcov/ site/
