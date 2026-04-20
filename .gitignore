@@ -70,5 +70,5 @@ dmypy.json
 # Ruff
 .ruff_cache/
 
-# MkDocs
-site/
+# MkDocs local build (site_dir is docs/ which IS committed)
+.cache/
