@@ -11,7 +11,7 @@ authors = [
     {name = "SuperMe", email = "support@superme.ai"}
 ]
 license = {text = "MIT"}
-requires-python = ">=3.9"
+requires-python = ">=3.8"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -48,7 +48,7 @@ include = ["superme_sdk*"]
 
 [tool.ruff]
 line-length = 88
-target-version = "py39"
+target-version = "py38"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
