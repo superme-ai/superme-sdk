@@ -180,7 +180,7 @@ def test_live_get_resume_instructions(live_client):
 
 @pytest.mark.live
 def test_live_get_resume(live_client):
-    """get_resume returns a dict (or 404 if no resume uploaded yet)."""
+    """get_resume returns a dict, or skips if no resume has been uploaded yet."""
     try:
         result = live_client.get_resume()
         assert isinstance(result, dict)
