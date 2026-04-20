@@ -1,4 +1,4 @@
-.PHONY: install test test-live test-cov lint fmt typecheck check clean
+.PHONY: install test test-live test-cov lint fmt typecheck check clean docs docs-serve
 
 install:
 	uv sync --extra dev
@@ -23,6 +23,12 @@ typecheck:
 
 check: lint typecheck test
 
+docs:
+	uv run --extra docs mkdocs build
+
+docs-serve:
+	uv run --extra docs mkdocs serve
+
 clean:
-	rm -rf dist/ build/ *.egg-info .pytest_cache .coverage htmlcov/
+	rm -rf dist/ build/ *.egg-info .pytest_cache .coverage htmlcov/ site/
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true

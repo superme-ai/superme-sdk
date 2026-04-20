@@ -69,3 +69,6 @@ dmypy.json
 
 # Ruff
 .ruff_cache/
+
+# MkDocs
+site/
