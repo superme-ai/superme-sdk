@@ -9,6 +9,7 @@ import httpx
 
 from ._chat_proxy import Chat, Completions
 from ._http import HttpMixin
+from .services._agentic_resume import AgenticResumeMixin
 from .services._companies import CompaniesMixin
 from .services._content import ContentMixin
 from .services._conversations import ConversationsMixin
@@ -37,6 +38,7 @@ class SuperMeClient(
     GroupsMixin,
     CompaniesMixin,
     InterviewsMixin,
+    AgenticResumeMixin,
     ContentMixin,
     SocialMixin,
     HttpMixin,

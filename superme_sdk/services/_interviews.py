@@ -3,9 +3,23 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 
 class InterviewsMixin:
+    def list_active_roles(self, limit: int = 20) -> list[dict]:
+        """List all active roles available for interview.
+
+        Returns:
+            List of role dicts with ``id``, ``title``, ``company_id``, ``location``.
+        """
+        resp = self._rest_http.get(
+            "/api/v3/agent/roles",
+            params={"limit": limit},
+        )
+        self._check_rest_response(resp)
+        return resp.json().get("roles", [])
+
     def start_interview(self, role_id: str) -> dict:
         """Start a background agent interview via REST API.
 
@@ -52,6 +66,58 @@ class InterviewsMixin:
         resp = self._rest_http.get(f"/api/v3/interview/by-user/{uid}")
         self._check_rest_response(resp)
         return resp.json().get("interviews", [])
+
+    def send_interview_message(
+        self,
+        interview_id: str,
+        message: str,
+        *,
+        stage_number: int | None = None,
+        attachments: list[dict[str, Any]] | None = None,
+    ) -> dict:
+        """Send a candidate message during an AWAITING_INPUT stage.
+
+        Args:
+            interview_id: The interview session ID.
+            message: The candidate's message text.
+            stage_number: Optional stage number for manual-stage interviews.
+            attachments: Optional list of ``{gcs_path, filename, content_type}`` dicts.
+
+        Returns:
+            Dict with ``interview_id``, ``stage_name``, ``message`` (interviewer reply),
+            and ``next_manual_stage``.
+        """
+        payload: dict[str, Any] = {"message": message}
+        if stage_number is not None:
+            payload["stage_number"] = stage_number
+        if attachments is not None:
+            payload["attachments"] = attachments
+        resp = self._rest_http.post(
+            f"/api/v3/agent/interview/{interview_id}/message",
+            json=payload,
+        )
+        self._check_rest_response(resp)
+        return resp.json()
+
+    def submit_interview(self, interview_id: str) -> dict:
+        """Submit a completed interview for scoring.
+
+        Returns:
+            Dict with submission confirmation.
+        """
+        resp = self._rest_http.post(f"/api/v3/interview/{interview_id}/submit")
+        self._check_rest_response(resp)
+        return resp.json()
+
+    def withdraw_interview(self, interview_id: str) -> dict:
+        """Withdraw from an interview session.
+
+        Returns:
+            Dict with withdrawal confirmation.
+        """
+        resp = self._rest_http.post(f"/api/v3/interview/{interview_id}/withdraw")
+        self._check_rest_response(resp)
+        return resp.json()
 
     def stream_interview(self, interview_id: str):
         """Stream interview events via SSE from ``GET /api/v3/interview/{id}/stream``.
