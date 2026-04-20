@@ -26,20 +26,6 @@ profile = client.get_profile("ludo")
 result = client.perspective_search("What is the best growth channel for B2B?")
 print(result["answer"])
 
-# multi-turn conversation
-answer1, conv_id = client.ask_with_history(
-    [{"role": "user", "content": "What is content marketing?"}],
-    username="ludo",
-)
-answer2, _ = client.ask_with_history(
-    [
-        {"role": "user", "content": "What is content marketing?"},
-        {"role": "assistant", "content": answer1},
-        {"role": "user", "content": "How does it differ from SEO?"},
-    ],
-    username="ludo",
-    conversation_id=conv_id,
-)
 ```
 
 ## API Reference
