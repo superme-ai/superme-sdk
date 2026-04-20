@@ -152,3 +152,39 @@ def test_regenerate_resume_sends_auth_header(client):
     )
     client.regenerate_resume()
     assert route.calls[0].request.headers["authorization"] == f"Bearer {_FAKE_JWT}"
+
+
+# ---------------------------------------------------------------------------
+# Live integration tests (skipped unless SUPERME_API_KEY is set)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.live
+def test_live_generate_resume_token(live_client):
+    """generate_resume_token returns a usable token."""
+    result = live_client.generate_resume_token()
+    assert isinstance(result, dict)
+    assert "token" in result
+    assert result["token"]
+
+
+@pytest.mark.live
+def test_live_get_resume_instructions(live_client):
+    """get_resume_instructions returns non-empty markdown string."""
+    token_data = live_client.generate_resume_token()
+    token = token_data["token"]
+    instructions = live_client.get_resume_instructions(token)
+    assert isinstance(instructions, str)
+    assert len(instructions) > 0
+
+
+@pytest.mark.live
+def test_live_get_resume(live_client):
+    """get_resume returns a dict (or 404 if no resume uploaded yet)."""
+    try:
+        result = live_client.get_resume()
+        assert isinstance(result, dict)
+    except RuntimeError:
+        # _check_rest_response raises RuntimeError on non-2xx (e.g. 404 when
+        # no resume exists yet). Treat as expected — skip rather than fail.
+        pytest.skip("No resume uploaded for this account yet (got non-2xx)")

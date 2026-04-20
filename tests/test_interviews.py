@@ -358,3 +358,25 @@ def test_live_list_companies_and_roles(live_rest_client):
     for role in roles:
         assert "id" in role, f"role missing id: {role}"
         assert "title" in role, f"role missing title: {role}"
+
+
+@pytest.mark.live
+def test_live_get_interview_status(live_rest_client):
+    """get_interview_status returns status dict for the first available interview."""
+    interviews = live_rest_client.list_my_interviews()
+    if not interviews:
+        pytest.skip("No interviews available for this account")
+    result = live_rest_client.get_interview_status(interviews[0]["interview_id"])
+    assert isinstance(result, dict)
+    assert "status" in result
+
+
+@pytest.mark.live
+def test_live_get_interview_transcript(live_rest_client):
+    """get_interview_transcript returns a transcript dict."""
+    interviews = live_rest_client.list_my_interviews()
+    if not interviews:
+        pytest.skip("No interviews available for this account")
+    result = live_rest_client.get_interview_transcript(interviews[0]["interview_id"])
+    assert isinstance(result, dict)
+    assert "transcript" in result
