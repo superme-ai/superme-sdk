@@ -10,6 +10,8 @@ pip install superme-sdk
 
 ## Quick start
 
+Get your API key at [superme.ai/settings](https://superme.ai/settings) → **API Keys**.
+
 ```python
 from superme_sdk import SuperMeClient
 
