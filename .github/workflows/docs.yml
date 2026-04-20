@@ -19,5 +19,5 @@ jobs:
           python-version: "3.11"
       - name: Install docs dependencies
         run: uv pip install --system -r docs/requirements.txt
-      - name: Deploy to docs branch
-        run: mkdocs gh-deploy --force --remote-branch docs
+      - name: Deploy to gh-pages branch
+        run: mkdocs gh-deploy --force
