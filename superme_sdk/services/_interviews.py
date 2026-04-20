@@ -28,7 +28,7 @@ class InterviewsMixin:
             Poll :meth:`get_interview_status` for progress.
         """
         resp = self._rest_http.post(
-            "/api/v3/interview/start-agent",
+            "/api/v3/agent/interview/start",
             json={"role_id": role_id},
         )
         self._check_rest_response(resp)
@@ -131,7 +131,7 @@ class InterviewsMixin:
         terminal = {"completed", "scoring", "scored", "failed", "withdrawn"}
         with self._rest_http.stream(
             "GET",
-            f"/api/v3/interview/{interview_id}/stream",
+            f"/api/v3/agent/interview/{interview_id}/stream",
             headers={"Accept-Encoding": "identity"},
             timeout=None,
         ) as resp:
