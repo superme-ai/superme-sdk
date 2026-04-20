@@ -45,13 +45,14 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - Authentication: api/auth.md
   - API Reference:
+    - Authentication: api/auth.md
     - Client: api/client.md
     - Models: api/models.md
     - Conversations: api/services/conversations.md
     - Profiles: api/services/profiles.md
     - Groups: api/services/groups.md
+    - Companies & Roles: api/services/companies.md
     - Interviews: api/services/interviews.md
     - Content: api/services/content.md
     - Social: api/services/social.md
