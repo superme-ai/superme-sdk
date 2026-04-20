@@ -7,19 +7,6 @@ from typing import Any
 
 
 class InterviewsMixin:
-    def list_active_roles(self, limit: int = 20) -> list[dict]:
-        """List all active roles available for interview.
-
-        Returns:
-            List of role dicts with ``id``, ``title``, ``company_id``, ``location``.
-        """
-        resp = self._rest_http.get(
-            "/api/v3/agent/roles",
-            params={"limit": limit},
-        )
-        self._check_rest_response(resp)
-        return resp.json().get("roles", [])
-
     def start_interview(self, role_id: str) -> dict:
         """Start a background agent interview via REST API.
 
