@@ -47,7 +47,9 @@ class LowLevel:
     def __init__(self, client: "SuperMeClient") -> None:
         self._client = client
 
-    def tool_call(self, tool_name: str, arguments: dict) -> Any:
+    def tool_call(
+        self, tool_name: str, arguments: dict
+    ) -> "dict[str, Any] | list[Any]":
         """Call any MCP tool by name and return the parsed result.
 
         Args:

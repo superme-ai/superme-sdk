@@ -72,3 +72,4 @@ dmypy.json
 
 # MkDocs
 site/
+uv.lock

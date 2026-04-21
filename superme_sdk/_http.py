@@ -21,7 +21,8 @@ def _decode_jwt(token: str) -> dict[str, Any]:
     try:
         parts = token.split(".")
         padded = parts[1] + "=" * (-len(parts[1]) % 4)
-        return json.loads(base64.urlsafe_b64decode(padded))
+        result = json.loads(base64.urlsafe_b64decode(padded))
+        return result if isinstance(result, dict) else {}
     except Exception:
         return {}
 
@@ -194,7 +195,9 @@ class HttpMixin:
             )
         return body.get("result", {})
 
-    def _mcp_tool_call(self, tool_name: str, arguments: dict):
+    def _mcp_tool_call(
+        self, tool_name: str, arguments: dict
+    ) -> dict[str, Any] | list[Any]:
         """Call an MCP tool and return the parsed JSON content (dict or list)."""
         result = self._mcp_request(
             "tools/call",

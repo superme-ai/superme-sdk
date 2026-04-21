@@ -103,7 +103,9 @@ class ConversationsMixin:
         conv_id = (response.metadata or {}).get("conversation_id")
         return response.choices[0].message.content, conv_id
 
-    def mcp_tool_call(self, tool_name: str, arguments: dict) -> Any:
+    def mcp_tool_call(
+        self, tool_name: str, arguments: dict
+    ) -> "dict[str, Any] | list[Any]":
         """Call any MCP tool by name and return the parsed result.
 
         .. deprecated::
