@@ -7,7 +7,6 @@ from typing import Any, Optional
 
 
 class GroupsMixin:
-
     def group_converse(
         self,
         participants: list[str],
@@ -88,7 +87,9 @@ class GroupsMixin:
             json=payload,
             headers={"Accept-Encoding": "identity"},
         ) as resp:
-            resp.raise_for_status()
+            if not resp.is_success:
+                resp.read()
+            self._check_rest_response(resp)
 
             buf = ""
             for raw_chunk in resp.iter_text():

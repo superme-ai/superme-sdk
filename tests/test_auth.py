@@ -1,8 +1,5 @@
 """Tests for superme_sdk.auth — token persistence."""
 
-import os
-from pathlib import Path
-
 import pytest
 
 from superme_sdk.auth import load_token, save_token, remove_token, resolve_token

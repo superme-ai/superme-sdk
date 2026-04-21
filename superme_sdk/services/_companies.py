@@ -4,7 +4,6 @@ from __future__ import annotations
 
 
 class CompaniesMixin:
-
     def list_companies(self, *, active_only: bool = True) -> list[dict]:
         """List companies with active roles.
 
@@ -35,9 +34,7 @@ class CompaniesMixin:
         Returns:
             List of role dicts (id, title, summary, location, etc.).
         """
-        result = self._mcp_tool_call(
-            "get_company_roles", {"company_id": company_id}
-        )
+        result = self._mcp_tool_call("get_company_roles", {"company_id": company_id})
         roles = result.get("roles", [])
         return roles if isinstance(roles, list) else []
 

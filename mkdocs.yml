@@ -57,4 +57,3 @@ nav:
     - Content: api/services/content.md
     - Social: api/services/social.md
     - OpenAI-compatible chat: api/chat.md
-    - Low-level MCP: api/low_level.md

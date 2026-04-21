@@ -33,6 +33,7 @@ if _env_file.exists():
 # Backend probe
 # ---------------------------------------------------------------------------
 
+
 def _probe_backend(api_key: str, base_url: str) -> bool:
     """Return True if the backend is reachable and accepts the key."""
     try:
@@ -55,6 +56,7 @@ def _probe_backend(api_key: str, base_url: str) -> bool:
 # Pytest markers
 # ---------------------------------------------------------------------------
 
+
 def pytest_configure(config):
     config.addinivalue_line(
         "markers",
@@ -65,6 +67,7 @@ def pytest_configure(config):
 # ---------------------------------------------------------------------------
 # Session-scoped fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="session")
 def backend_url() -> str:
@@ -91,8 +94,11 @@ def backend_alive(live_api_key, backend_url) -> bool:
 def live_client(live_api_key, backend_url, backend_alive):
     """Real SuperMeClient — skips automatically when backend is not reachable."""
     if not backend_alive:
-        pytest.skip("Backend not reachable or SUPERME_API_KEY not set — skipping live tests")
+        pytest.skip(
+            "Backend not reachable or SUPERME_API_KEY not set — skipping live tests"
+        )
     from superme_sdk.client import SuperMeClient
+
     client = SuperMeClient(api_key=live_api_key, base_url=backend_url)
     yield client
     client.close()

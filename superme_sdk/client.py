@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import json
 from typing import Any, Optional
 
 import httpx
 
 from ._chat_proxy import Chat, Completions
-from ._http import HttpMixin
+from ._http import HttpMixin, _decode_jwt
 from .services._agentic_resume import AgenticResumeMixin
 from .services._companies import CompaniesMixin
 from .services._content import ContentMixin
@@ -30,6 +29,47 @@ __all__ = [
     "Chat",
     "Completions",
 ]
+
+
+class LowLevel:
+    """Direct access to MCP protocol and raw HTTP.
+
+    Prefer the domain-specific client methods for day-to-day use.
+    This namespace is for power users who need to call MCP tools directly
+    or send raw HTTP requests.
+
+    Access via ``client.low_level``::
+
+        tools = client.low_level.list_tools()
+        result = client.low_level.tool_call("get_profile", {"identifier": "ludo"})
+    """
+
+    def __init__(self, client: "SuperMeClient") -> None:
+        self._client = client
+
+    def tool_call(
+        self, tool_name: str, arguments: dict
+    ) -> "dict[str, Any] | list[Any]":
+        """Call any MCP tool by name and return the parsed result.
+
+        Args:
+            tool_name: MCP tool name (e.g. ``"get_profile"``).
+            arguments: Tool arguments dict.
+
+        Returns:
+            Parsed JSON dict (or list) from the tool's response content.
+        """
+        return self._client._mcp_tool_call(tool_name, arguments)
+
+    def list_tools(self) -> list[dict]:
+        """List all available MCP tools.
+
+        Returns:
+            List of tool definition dicts (name, description, inputSchema).
+        """
+        data = self._client._mcp_request("tools/list", {})
+        return data.get("tools", [])
+
 
 
 class SuperMeClient(
@@ -61,6 +101,9 @@ class SuperMeClient(
 
         # Convenience helpers
         answer = client.ask("What is PMF?", username="ludo")
+
+        # Low-level MCP access
+        tools = client.low_level.list_tools()
     """
 
     def __init__(
@@ -97,6 +140,7 @@ class SuperMeClient(
         )
         self._rpc_id = 0
         self.chat = Chat(self)
+        self.low_level = LowLevel(self)
 
     # ------------------------------------------------------------------
     # Properties
@@ -110,14 +154,7 @@ class SuperMeClient(
     @property
     def user_id(self) -> Optional[str]:
         """Extract user_id from the JWT token payload."""
-        try:
-            import base64
-            parts = self.api_key.split(".")
-            padded = parts[1] + "=" * (-len(parts[1]) % 4)
-            data = json.loads(base64.urlsafe_b64decode(padded))
-            return data.get("user_id")
-        except Exception:
-            return None
+        return _decode_jwt(self.api_key).get("user_id")
 
     # ------------------------------------------------------------------
     # Context manager / cleanup

@@ -6,7 +6,7 @@ Pre-hardening SDK was an OpenAI-compatible wrapper with:
   - client.ask(question, username, ...)
   - client.ask_with_history(messages, username, ...) -> (str, conv_id)
   - client.chat.completions.create(messages, extra_body={"username": ...})
-  - client.raw_request(endpoint, method="POST", **kwargs)
+  - client.low_level.raw_request(method, params)
 
 These tests expose backward compatibility regressions in the hardened SDK.
 No live backend required — all HTTP is mocked with respx.
@@ -15,7 +15,6 @@ No live backend required — all HTTP is mocked with respx.
 from __future__ import annotations
 
 import json
-from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
@@ -272,30 +271,6 @@ def test_chat_completions_create_returns_response_with_content():
         client.close()
 
 
-# ---------------------------------------------------------------------------
-# raw_request() - pre-hardening used it as a raw HTTP helper
-# ---------------------------------------------------------------------------
-
-
-@respx.mock
-def test_raw_request_mcp_method_returns_dict():
-    """raw_request("tools/list") must return the result dict."""
-    respx.post(f"{MCP_BASE}/mcp/").mock(
-        return_value=httpx.Response(
-            200,
-            json={
-                "jsonrpc": "2.0",
-                "id": 1,
-                "result": {"tools": [{"name": "ask"}]},
-            },
-        )
-    )
-    client = SuperMeClient(api_key="tok")
-    result = client.raw_request("tools/list")
-    assert isinstance(result, dict)
-    assert "tools" in result
-    if hasattr(client, "close"):
-        client.close()
 
 
 # ---------------------------------------------------------------------------

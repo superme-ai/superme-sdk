@@ -21,12 +21,16 @@ def main():
     print("\n1. Multi-turn conversation (OpenAI-style):")
     messages = [{"role": "user", "content": "What is content marketing?"}]
 
-    r1 = client.chat.completions.create(model="gpt-4", messages=messages, username="ludo")
+    r1 = client.chat.completions.create(
+        model="gpt-4", messages=messages, username="ludo"
+    )
     conv_id = r1.metadata["conversation_id"]
     print(f"Turn 1: {r1.choices[0].message.content[:150]}...")
 
     messages.append({"role": "assistant", "content": r1.choices[0].message.content})
-    messages.append({"role": "user", "content": "How does it differ from social media marketing?"})
+    messages.append(
+        {"role": "user", "content": "How does it differ from social media marketing?"}
+    )
 
     r2 = client.chat.completions.create(
         model="gpt-4",

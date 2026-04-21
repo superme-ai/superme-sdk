@@ -13,6 +13,7 @@ import pytest
 import respx
 
 from superme_sdk.client import SuperMeClient
+from superme_sdk.exceptions import SuperMeError
 
 REST_BASE = "https://www.superme.ai"
 FAKE_JWT = "eyJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoidWlkXzEyMyJ9.sig"
@@ -34,7 +35,13 @@ _FAKE_RESUME = {
             "tech_stack": [{"layer": "backend", "tech": "Python"}],
         },
         "notable_sessions": [
-            {"name": "Big refactor", "date": "2025-04-01", "messages": 50, "hours": 3.0, "what_happened": "Rewrote auth"}
+            {
+                "name": "Big refactor",
+                "date": "2025-04-01",
+                "messages": 50,
+                "hours": 3.0,
+                "what_happened": "Rewrote auth",
+            }
         ],
         "prompt_style": {
             "traits": [{"label": "Direct", "evidence": "Often skips pleasantries"}],
@@ -103,7 +110,7 @@ class TestGetAgenticResume:
             return_value=httpx.Response(500, json={"error": "server error"})
         )
         client = SuperMeClient(api_key=FAKE_JWT)
-        with pytest.raises(RuntimeError):
+        with pytest.raises(SuperMeError):
             client.get_agentic_resume()
         client.close()
 
@@ -126,7 +133,10 @@ class TestGetAgenticResume:
 class TestRegenerateAgenticResume:
     @respx.mock
     def test_regenerate_returns_structured_data(self):
-        payload = {"structured_data": _FAKE_RESUME["structured_data"], "html": "<html/>"}
+        payload = {
+            "structured_data": _FAKE_RESUME["structured_data"],
+            "html": "<html/>",
+        }
         respx.post(f"{REST_BASE}/api/v3/agentic-resume/regenerate").mock(
             return_value=httpx.Response(200, json=payload)
         )
@@ -143,7 +153,7 @@ class TestRegenerateAgenticResume:
             return_value=httpx.Response(404, json={"detail": "not found"})
         )
         client = SuperMeClient(api_key=FAKE_JWT)
-        with pytest.raises(RuntimeError):
+        with pytest.raises(SuperMeError):
             client.regenerate_agentic_resume()
         client.close()
 
@@ -153,7 +163,7 @@ class TestRegenerateAgenticResume:
             return_value=httpx.Response(500, json={"error": "synthesis failed"})
         )
         client = SuperMeClient(api_key=FAKE_JWT)
-        with pytest.raises(RuntimeError):
+        with pytest.raises(SuperMeError):
             client.regenerate_agentic_resume()
         client.close()
 
@@ -196,7 +206,15 @@ class TestCreateAgenticResumeToken:
     @respx.mock
     def test_create_token_calls_correct_url(self):
         route = respx.post(f"{REST_BASE}/api/v3/agentic-resume/token").mock(
-            return_value=httpx.Response(200, json={"token": "t", "upload_url": "u", "instructions_url": "i", "expires_at": "e"})
+            return_value=httpx.Response(
+                200,
+                json={
+                    "token": "t",
+                    "upload_url": "u",
+                    "instructions_url": "i",
+                    "expires_at": "e",
+                },
+            )
         )
         client = SuperMeClient(api_key=FAKE_JWT)
         client.create_agentic_resume_token()
@@ -209,7 +227,7 @@ class TestCreateAgenticResumeToken:
             return_value=httpx.Response(401, json={"error": "unauthorized"})
         )
         client = SuperMeClient(api_key=FAKE_JWT)
-        with pytest.raises(RuntimeError):
+        with pytest.raises(SuperMeError):
             client.create_agentic_resume_token()
         client.close()
 
@@ -252,7 +270,7 @@ def test_live_regenerate_requires_existing_data(live_client):
     """regenerate raises if no resume exists, or returns structured_data if one does."""
     resume = live_client.get_agentic_resume()
     if not resume.get("structured_data"):
-        with pytest.raises((RuntimeError, Exception)):
+        with pytest.raises(SuperMeError):
             live_client.regenerate_agentic_resume()
     else:
         result = live_client.regenerate_agentic_resume()
