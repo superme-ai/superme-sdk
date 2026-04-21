@@ -24,28 +24,32 @@ from superme_sdk.models import StreamEvent
 def test_live_get_profile_by_username(live_client, live_username):
     profile = live_client.get_profile(live_username)
     assert isinstance(profile, dict), f"expected dict, got {type(profile)}"
-    assert profile.get("username") == live_username or "id" in profile
+    # profile has name/title/location/avatar — at least name should be present
+    assert "name" in profile or "username" in profile or "id" in profile
 
 
 @pytest.mark.live
 def test_live_get_own_profile(live_client):
     profile = live_client.get_profile()
     assert isinstance(profile, dict)
-    # own profile should have at least one of these
-    assert "username" in profile or "id" in profile or "name" in profile
+    assert "name" in profile or "username" in profile or "id" in profile
 
 
 @pytest.mark.live
 def test_live_find_user_by_name(live_client, live_username):
     results = live_client.find_user_by_name(live_username)
-    assert isinstance(results, dict)
+    # returns a list of matching user dicts
+    assert isinstance(results, list)
+    assert len(results) > 0
+    assert "name" in results[0]
 
 
 @pytest.mark.live
 def test_live_perspective_search(live_client):
     result = live_client.perspective_search("What is product-market fit?")
     assert isinstance(result, dict)
-    assert "answer" in result or "viewpoints" in result or "response" in result
+    # response shape: {perspectives, question, status, conversation_id}
+    assert "perspectives" in result or "answer" in result or "status" in result
 
 
 # ---------------------------------------------------------------------------
