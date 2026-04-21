@@ -15,7 +15,6 @@ No live backend required — all HTTP is mocked with respx.
 from __future__ import annotations
 
 import json
-from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest

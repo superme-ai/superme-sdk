@@ -147,7 +147,7 @@ class InterviewsMixin:
             headers={"Accept-Encoding": "identity"},
             timeout=None,
         ) as resp:
-            resp.raise_for_status()
+            self._check_rest_response(resp)
             buf = ""
             for raw in resp.iter_text():
                 buf += raw

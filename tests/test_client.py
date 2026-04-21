@@ -7,7 +7,13 @@ import pytest
 import respx
 
 from superme_sdk.client import SuperMeClient, ChatCompletion
-from superme_sdk.exceptions import AuthError, MCPError, SuperMeError
+from superme_sdk.exceptions import (
+    AuthError,
+    MCPError,
+    NotFoundError,
+    RateLimitError,
+    SuperMeError,
+)
 
 MCP_BASE = "https://mcp.superme.ai"
 
@@ -334,41 +340,22 @@ def test_low_level_raw_request():
     [
         (401, AuthError),
         (403, AuthError),
-        (429, "RateLimitError"),
+        (404, NotFoundError),
+        (429, RateLimitError),
         (500, SuperMeError),
     ],
 )
 @respx.mock
 def test_rest_status_code_maps_to_typed_exception(status_code, exc_type):
-    from superme_sdk.exceptions import RateLimitError
-
-    exc_map = {"RateLimitError": RateLimitError}
-    expected = exc_map.get(exc_type, exc_type)
     REST_BASE = "https://www.superme.ai"
-    # use regenerate (no 404 special-case) to test HTTP → exception mapping
+    # use regenerate endpoint — no special 404 handling unlike get_agentic_resume
     respx.post(f"{REST_BASE}/api/v3/agentic-resume/regenerate").mock(
         return_value=httpx.Response(status_code, json={"error": "err"})
     )
     client = SuperMeClient(api_key="tok")
-    with pytest.raises(expected) as exc_info:
+    with pytest.raises(exc_type) as exc_info:
         client.regenerate_agentic_resume()
-    if hasattr(exc_info.value, "status_code"):
-        assert exc_info.value.status_code == status_code
-    client.close()
-
-
-@respx.mock
-def test_rest_404_raises_not_found_error():
-    from superme_sdk.exceptions import NotFoundError
-
-    REST_BASE = "https://www.superme.ai"
-    respx.post(f"{REST_BASE}/api/v3/agentic-resume/regenerate").mock(
-        return_value=httpx.Response(404, json={"error": "not found"})
-    )
-    client = SuperMeClient(api_key="tok")
-    with pytest.raises(NotFoundError) as exc_info:
-        client.regenerate_agentic_resume()
-    assert exc_info.value.status_code == 404
+    assert exc_info.value.status_code == status_code
     client.close()
 
 

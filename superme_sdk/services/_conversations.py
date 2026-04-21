@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import warnings
-from typing import Any, Optional
+from typing import Any, Generator, Optional
+
+from superme_sdk.models import StreamEvent
 
 
 class ConversationsMixin:
@@ -197,7 +199,7 @@ class ConversationsMixin:
         question: str,
         *,
         conversation_id: Optional[str] = None,
-    ):
+    ) -> Generator[StreamEvent, None, None]:
         """Stream a response from your SuperMe AI agent.
 
         Example:

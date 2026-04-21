@@ -6,7 +6,6 @@ from typing import Any, Optional
 
 
 class ContentMixin:
-
     def add_internal_content(
         self,
         input: list[str],

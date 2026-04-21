@@ -6,7 +6,6 @@ from typing import Any, Optional
 
 
 class ProfilesMixin:
-
     def get_profile(self, identifier: Optional[str] = None) -> dict:
         """Return public profile info for a user.
 
@@ -43,9 +42,7 @@ class ProfilesMixin:
         Returns:
             Dict with match results.
         """
-        return self._mcp_tool_call(
-            "find_user_by_name", {"name": name, "limit": limit}
-        )
+        return self._mcp_tool_call("find_user_by_name", {"name": name, "limit": limit})
 
     def find_users_by_names(
         self, names: list[str], *, limit_per_name: int = 10

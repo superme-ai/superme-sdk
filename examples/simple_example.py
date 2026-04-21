@@ -19,13 +19,17 @@ def main():
 
     # 1. Simple question
     print("\n1. Simple question:")
-    answer = client.ask("What are the key principles of growth marketing?", username="ludo")
+    answer = client.ask(
+        "What are the key principles of growth marketing?", username="ludo"
+    )
     print(f"Answer: {answer[:200]}...")
 
     # 2. Anonymous question (incognito mode)
     print("\n2. Anonymous question (incognito mode):")
     anonymous_answer = client.ask(
-        "What are the key principles of growth marketing?", username="ludo", incognito=True
+        "What are the key principles of growth marketing?",
+        username="ludo",
+        incognito=True,
     )
     print(f"Anonymous Answer: {anonymous_answer[:200]}...")
 

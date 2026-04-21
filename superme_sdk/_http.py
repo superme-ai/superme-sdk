@@ -5,7 +5,7 @@ from __future__ import annotations
 import base64
 import json
 import warnings
-from typing import Any, Optional
+from typing import Any, Generator, Optional
 
 import httpx
 
@@ -13,7 +13,7 @@ from .exceptions import APIError, AuthError, MCPError, NotFoundError, RateLimitE
 from .models import StreamEvent
 
 
-def _decode_jwt(token: str) -> dict:
+def _decode_jwt(token: str) -> dict[str, Any]:
     """Decode the payload of a JWT token without verifying the signature.
 
     Returns an empty dict if the token is malformed or cannot be decoded.
@@ -38,7 +38,7 @@ class HttpMixin:
         question: str,
         *,
         conversation_id: Optional[str] = None,
-    ):
+    ) -> Generator[StreamEvent, None, None]:
         """Stream via the direct /mcp/chat/stream endpoint.
 
         Yields :class:`~superme_sdk.models.StreamEvent` objects.
@@ -116,21 +116,6 @@ class HttpMixin:
                     yield StreamEvent(text=line)
 
         yield StreamEvent(done=True, conversation_id=conv_id_out)
-
-    @staticmethod
-    def _extract_tool_result(result: dict) -> Optional[dict]:
-        """Parse the JSON payload from an MCP tool result content block."""
-        content_list = result.get("content", [])
-        if not content_list:
-            return None
-        text = (content_list[0].get("text") or "").strip()
-        if not text:
-            return None
-        try:
-            obj, _ = json.JSONDecoder().raw_decode(text)
-            return obj if isinstance(obj, dict) else None
-        except (json.JSONDecodeError, ValueError):
-            return None
 
     def raw_request(self, method: str, params: dict | None = None) -> dict:
         """Send a raw MCP JSON-RPC request and return the result.
