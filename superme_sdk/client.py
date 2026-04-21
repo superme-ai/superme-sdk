@@ -70,32 +70,6 @@ class LowLevel:
         data = self._client._mcp_request("tools/list", {})
         return data.get("tools", [])
 
-    def raw_request(self, method: str, params: dict | None = None) -> dict:
-        """Send a raw MCP JSON-RPC 2.0 request and return the result.
-
-        Args:
-            method: JSON-RPC method name (e.g. ``"tools/list"``).
-            params: JSON-RPC params dict.
-
-        Returns:
-            Parsed ``result`` dict from the JSON-RPC response.
-        """
-        return self._client._mcp_request(method, params or {})
-
-    def http_request(
-        self, endpoint: str, method: str = "POST", **kwargs: Any
-    ) -> httpx.Response:
-        """Make a raw HTTP request to the MCP base URL.
-
-        Args:
-            endpoint: Path (e.g. ``"/health"``).
-            method: HTTP method.
-            **kwargs: Passed directly to ``httpx.Client.request``.
-
-        Returns:
-            ``httpx.Response`` object.
-        """
-        return self._client._http.request(method, endpoint, **kwargs)
 
 
 class SuperMeClient(

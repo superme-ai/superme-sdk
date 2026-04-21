@@ -297,22 +297,6 @@ def test_low_level_list_tools():
     client.close()
 
 
-@respx.mock
-def test_low_level_raw_request():
-    tools_response = {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "result": {"tools": [{"name": "ask"}]},
-    }
-    respx.post(f"{MCP_BASE}/mcp/").mock(
-        return_value=httpx.Response(200, json=tools_response)
-    )
-    client = SuperMeClient(api_key="tok")
-    result = client.low_level.raw_request("tools/list")
-    assert result["tools"][0]["name"] == "ask"
-    client.close()
-
-
 # ---- status-code-to-exception mapping ----
 
 
