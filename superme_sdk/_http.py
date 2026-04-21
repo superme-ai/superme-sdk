@@ -9,7 +9,7 @@ from typing import Any, Optional
 
 import httpx
 
-from .exceptions import APIError, AuthError, NotFoundError, RateLimitError
+from .exceptions import APIError, AuthError, MCPError, NotFoundError, RateLimitError
 from .models import StreamEvent
 
 
@@ -61,7 +61,7 @@ class HttpMixin:
             json=payload,
             headers={"Accept-Encoding": "identity"},
         ) as resp:
-            resp.raise_for_status()
+            self._check_rest_response(resp)
 
             buf = ""
             for raw_chunk in resp.iter_text():
@@ -193,7 +193,7 @@ class HttpMixin:
             "params": params,
         }
         resp = self._http.post("/mcp/", json=payload)
-        resp.raise_for_status()
+        self._check_rest_response(resp)
 
         ct = resp.headers.get("content-type", "")
         if "text/event-stream" in ct:
@@ -203,8 +203,9 @@ class HttpMixin:
 
         if "error" in body:
             err = body["error"]
-            raise RuntimeError(
-                f"MCP error {err.get('code', '?')}: {err.get('message', str(err))}"
+            raise MCPError(
+                f"MCP error {err.get('code', '?')}: {err.get('message', str(err))}",
+                code=err.get("code"),
             )
         return body.get("result", {})
 

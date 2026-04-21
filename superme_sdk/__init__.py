@@ -2,7 +2,14 @@
 
 from .client import SuperMeClient
 from .auth import load_token, save_token, remove_token, resolve_token
-from .exceptions import SuperMeError, AuthError, RateLimitError, NotFoundError, APIError
+from .exceptions import (
+    SuperMeError,
+    AuthError,
+    RateLimitError,
+    NotFoundError,
+    APIError,
+    MCPError,
+)
 from .models import StreamEvent
 
 __version__ = "0.2.0"
@@ -17,5 +24,6 @@ __all__ = [
     "RateLimitError",
     "NotFoundError",
     "APIError",
+    "MCPError",
     "StreamEvent",
 ]

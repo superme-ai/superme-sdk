@@ -7,6 +7,7 @@ import pytest
 import respx
 
 from superme_sdk.client import SuperMeClient, ChatCompletion
+from superme_sdk.exceptions import AuthError, MCPError, SuperMeError
 
 MCP_BASE = "https://mcp.superme.ai"
 
@@ -196,7 +197,7 @@ def test_mcp_tool_call():
 
 
 @respx.mock
-def test_mcp_error_raises_runtime_error():
+def test_mcp_error_raises_mcp_error():
     respx.post(f"{MCP_BASE}/mcp/").mock(
         return_value=httpx.Response(
             200,
@@ -208,18 +209,32 @@ def test_mcp_error_raises_runtime_error():
         )
     )
     client = SuperMeClient(api_key="tok")
-    with pytest.raises(RuntimeError, match="MCP error -32600"):
+    with pytest.raises(MCPError, match="MCP error -32600") as exc_info:
         client.ask("hi", username="ludo")
+    assert exc_info.value.code == -32600
     client.close()
 
 
 @respx.mock
-def test_http_error_raises():
+def test_http_401_raises_auth_error():
     respx.post(f"{MCP_BASE}/mcp/").mock(
         return_value=httpx.Response(401, json={"error": "unauthorized"})
     )
     client = SuperMeClient(api_key="bad-tok")
-    with pytest.raises(httpx.HTTPStatusError):
+    with pytest.raises(AuthError) as exc_info:
+        client.ask("hi", username="ludo")
+    assert exc_info.value.status_code == 401
+    client.close()
+
+
+@respx.mock
+def test_http_error_is_superme_error():
+    """Any HTTP error from MCP is a SuperMeError subclass."""
+    respx.post(f"{MCP_BASE}/mcp/").mock(
+        return_value=httpx.Response(500, json={"error": "internal"})
+    )
+    client = SuperMeClient(api_key="tok")
+    with pytest.raises(SuperMeError):
         client.ask("hi", username="ludo")
     client.close()
 
@@ -252,6 +267,109 @@ def test_context_manager():
     with SuperMeClient(api_key="tok") as client:
         result = client.ask("hi", username="ludo")
         assert result == "Growth marketing is..."
+
+
+# ---- low_level namespace ----
+
+
+@respx.mock
+def test_low_level_tool_call():
+    profile_result = {"name": "Ludo", "username": "ludo"}
+    respx.post(f"{MCP_BASE}/mcp/").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "result": {
+                    "content": [{"type": "text", "text": json.dumps(profile_result)}],
+                },
+            },
+        )
+    )
+    client = SuperMeClient(api_key="tok")
+    result = client.low_level.tool_call("get_profile", {"identifier": "ludo"})
+    assert result["name"] == "Ludo"
+    client.close()
+
+
+@respx.mock
+def test_low_level_list_tools():
+    tools_response = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": {"tools": [{"name": "ask"}, {"name": "get_profile"}]},
+    }
+    respx.post(f"{MCP_BASE}/mcp/").mock(
+        return_value=httpx.Response(200, json=tools_response)
+    )
+    client = SuperMeClient(api_key="tok")
+    tools = client.low_level.list_tools()
+    assert isinstance(tools, list)
+    assert tools[0]["name"] == "ask"
+    client.close()
+
+
+@respx.mock
+def test_low_level_raw_request():
+    tools_response = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": {"tools": [{"name": "ask"}]},
+    }
+    respx.post(f"{MCP_BASE}/mcp/").mock(
+        return_value=httpx.Response(200, json=tools_response)
+    )
+    client = SuperMeClient(api_key="tok")
+    result = client.low_level.raw_request("tools/list")
+    assert result["tools"][0]["name"] == "ask"
+    client.close()
+
+
+# ---- status-code-to-exception mapping ----
+
+
+@pytest.mark.parametrize(
+    "status_code,exc_type",
+    [
+        (401, AuthError),
+        (403, AuthError),
+        (429, "RateLimitError"),
+        (500, SuperMeError),
+    ],
+)
+@respx.mock
+def test_rest_status_code_maps_to_typed_exception(status_code, exc_type):
+    from superme_sdk.exceptions import RateLimitError
+
+    exc_map = {"RateLimitError": RateLimitError}
+    expected = exc_map.get(exc_type, exc_type)
+    REST_BASE = "https://www.superme.ai"
+    # use regenerate (no 404 special-case) to test HTTP → exception mapping
+    respx.post(f"{REST_BASE}/api/v3/agentic-resume/regenerate").mock(
+        return_value=httpx.Response(status_code, json={"error": "err"})
+    )
+    client = SuperMeClient(api_key="tok")
+    with pytest.raises(expected) as exc_info:
+        client.regenerate_agentic_resume()
+    if hasattr(exc_info.value, "status_code"):
+        assert exc_info.value.status_code == status_code
+    client.close()
+
+
+@respx.mock
+def test_rest_404_raises_not_found_error():
+    from superme_sdk.exceptions import NotFoundError
+
+    REST_BASE = "https://www.superme.ai"
+    respx.post(f"{REST_BASE}/api/v3/agentic-resume/regenerate").mock(
+        return_value=httpx.Response(404, json={"error": "not found"})
+    )
+    client = SuperMeClient(api_key="tok")
+    with pytest.raises(NotFoundError) as exc_info:
+        client.regenerate_agentic_resume()
+    assert exc_info.value.status_code == 404
+    client.close()
 
 
 # ---- live integration tests ----
@@ -299,9 +417,12 @@ def test_live_chat_completions_create(live_client, live_username):
 
 @pytest.mark.live
 def test_live_mcp_tool_call(live_client, live_username):
-    result = live_client.mcp_tool_call("ask", {
-        "identifier": live_username,
-        "question": "Say hi",
-    })
+    result = live_client.mcp_tool_call(
+        "ask",
+        {
+            "identifier": live_username,
+            "question": "Say hi",
+        },
+    )
     assert isinstance(result, dict)
     assert "response" in result

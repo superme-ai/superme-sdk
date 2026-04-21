@@ -25,3 +25,15 @@ class NotFoundError(SuperMeError):
 
 class APIError(SuperMeError):
     """Unexpected API error (any other 4xx/5xx)."""
+
+
+class MCPError(SuperMeError):
+    """MCP JSON-RPC protocol error (error response from the MCP server).
+
+    Attributes:
+        code: The JSON-RPC error code.
+    """
+
+    def __init__(self, message: str, *, code: int | None = None) -> None:
+        super().__init__(message)
+        self.code = code
