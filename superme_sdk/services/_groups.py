@@ -87,6 +87,8 @@ class GroupsMixin:
             json=payload,
             headers={"Accept-Encoding": "identity"},
         ) as resp:
+            if not resp.is_success:
+                resp.read()
             self._check_rest_response(resp)
 
             buf = ""
