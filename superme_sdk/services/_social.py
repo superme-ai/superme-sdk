@@ -6,7 +6,6 @@ from typing import Any, Optional
 
 
 class SocialMixin:
-
     def get_connected_accounts(self, user_id: Optional[str] = None) -> dict:
         """Return connected social accounts for the authenticated user.
 
@@ -27,7 +26,7 @@ class SocialMixin:
         uid = user_id or self.user_id
         if uid:
             params["user_id"] = uid
-        resp = self._rest_http.get("/api/v1/get_connected_accounts", params=params)
+        resp = self._rest_http.get("/api/v3/social/connected_accounts", params=params)
         self._check_rest_response(resp)
         return resp.json()
 
@@ -57,7 +56,7 @@ class SocialMixin:
         body: dict[str, Any] = {"platform": platform, "handle": handle}
         if token is not None:
             body["token"] = token
-        resp = self._rest_http.post("/api/v1/connect_social", json=body)
+        resp = self._rest_http.post("/api/v3/social/connect", json=body)
         self._check_rest_response(resp)
         return resp.json()
 
@@ -76,7 +75,7 @@ class SocialMixin:
             Dict with ``status`` field.
         """
         resp = self._rest_http.post(
-            "/api/v1/disconnect_social", json={"platform": platform}
+            "/api/v3/social/disconnect", json={"platform": platform}
         )
         self._check_rest_response(resp)
         return resp.json()
@@ -96,7 +95,7 @@ class SocialMixin:
         Returns:
             Dict with ``status`` field.
         """
-        resp = self._rest_http.post("/api/v1/connect_blog", json={"url": url})
+        resp = self._rest_http.post("/api/v3/social/connect_blog", json={"url": url})
         self._check_rest_response(resp)
         return resp.json()
 
@@ -114,6 +113,6 @@ class SocialMixin:
         Returns:
             Dict with ``status`` field.
         """
-        resp = self._rest_http.post("/api/v1/disconnect_blog", json={"url": url})
+        resp = self._rest_http.post("/api/v3/social/disconnect_blog", json={"url": url})
         self._check_rest_response(resp)
         return resp.json()

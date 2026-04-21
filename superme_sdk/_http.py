@@ -2,10 +2,28 @@
 
 from __future__ import annotations
 
+import base64
 import json
+import warnings
 from typing import Any, Optional
 
 import httpx
+
+from .exceptions import APIError, AuthError, NotFoundError, RateLimitError
+from .models import StreamEvent
+
+
+def _decode_jwt(token: str) -> dict:
+    """Decode the payload of a JWT token without verifying the signature.
+
+    Returns an empty dict if the token is malformed or cannot be decoded.
+    """
+    try:
+        parts = token.split(".")
+        padded = parts[1] + "=" * (-len(parts[1]) % 4)
+        return json.loads(base64.urlsafe_b64decode(padded))
+    except Exception:
+        return {}
 
 
 class HttpMixin:
@@ -15,37 +33,32 @@ class HttpMixin:
         self._http, self._rest_http, self._rpc_id, self.api_key, self.base_url
     """
 
-    @property
-    def _is_stream_endpoint(self) -> bool:
-        """True when base_url points to the direct stream endpoint (not MCP JSON-RPC)."""
-        return "/mcp/chat/stream" in self.base_url
-
     def _stream_direct(
         self,
         question: str,
         *,
         conversation_id: Optional[str] = None,
     ):
-        """Stream via the direct /mcp/chat/stream endpoint."""
+        """Stream via the direct /mcp/chat/stream endpoint.
+
+        Yields :class:`~superme_sdk.models.StreamEvent` objects.
+        The final event has ``done=True`` and ``conversation_id`` populated.
+        """
         payload: dict[str, Any] = {"question": question}
         if conversation_id:
             payload["conversation_id"] = conversation_id
 
-        # Extract user_id from JWT token payload
-        try:
-            import base64
-            parts = self.api_key.split(".")
-            padded = parts[1] + "=" * (-len(parts[1]) % 4)
-            token_data = json.loads(base64.urlsafe_b64decode(padded))
-            payload["user_id"] = token_data.get("user_id", "")
-        except Exception:
-            pass
+        token_data = _decode_jwt(self.api_key)
+        if token_data.get("user_id"):
+            payload["user_id"] = token_data["user_id"]
 
         conv_id_out: Optional[str] = conversation_id
 
         # Disable compression so chunks arrive unbuffered
         with self._http.stream(
-            "POST", "/mcp/chat/stream", json=payload,
+            "POST",
+            "/mcp/chat/stream",
+            json=payload,
             headers={"Accept-Encoding": "identity"},
         ) as resp:
             resp.raise_for_status()
@@ -66,7 +79,7 @@ class HttpMixin:
                     try:
                         obj = json.loads(line)
                     except (json.JSONDecodeError, ValueError):
-                        yield line
+                        yield StreamEvent(text=line)
                         continue
                     if not isinstance(obj, dict):
                         continue
@@ -77,7 +90,7 @@ class HttpMixin:
                     elif msg_type == "content":
                         text = obj.get("content", "")
                         if text:
-                            yield text
+                            yield StreamEvent(text=text)
                     elif msg_type == "done":
                         pass
 
@@ -98,102 +111,11 @@ class HttpMixin:
                         elif msg_type == "content":
                             text = obj.get("content", "")
                             if text:
-                                yield text
+                                yield StreamEvent(text=text)
                 except (json.JSONDecodeError, ValueError):
-                    yield line
+                    yield StreamEvent(text=line)
 
-        yield {"conversation_id": conv_id_out, "_done": True}
-
-    def _stream_mcp(
-        self,
-        question: str,
-        *,
-        conversation_id: Optional[str] = None,
-    ):
-        """Stream via the MCP JSON-RPC endpoint."""
-        args: dict[str, Any] = {"question": question}
-        if conversation_id:
-            args["conversation_id"] = conversation_id
-
-        payload = {
-            "jsonrpc": "2.0",
-            "id": self._next_rpc_id(),
-            "method": "tools/call",
-            "params": {"name": "ask_my_agent", "arguments": args},
-        }
-
-        with self._http.stream("POST", "/", json=payload) as resp:
-            resp.raise_for_status()
-            ct = resp.headers.get("content-type", "")
-
-            # Non-SSE fallback: yield full response at once
-            if "text/event-stream" not in ct:
-                resp.read()
-                body = resp.json()
-                if "error" in body:
-                    err = body["error"]
-                    raise RuntimeError(
-                        f"MCP error {err.get('code', '?')}: {err.get('message', str(err))}"
-                    )
-                result = self._extract_tool_result(body.get("result", {}))
-                if result:
-                    yield result.get("response", "")
-                    yield {"conversation_id": result.get("conversation_id"), "_done": True}
-                else:
-                    yield {"conversation_id": None, "_done": True}
-                return
-
-            # SSE streaming: yield deltas between progressive responses
-            current_block: list[str] = []
-            prev_text = ""
-            conv_id_out: Optional[str] = None
-
-            for raw_line in resp.iter_lines():
-                if raw_line.startswith("data: "):
-                    current_block.append(raw_line[6:] + "\n")
-                elif raw_line.startswith("data:"):
-                    current_block.append(raw_line[5:] + "\n")
-                elif raw_line == "" and current_block:
-                    try:
-                        obj = json.loads("".join(current_block).rstrip("\n"))
-                    except (json.JSONDecodeError, ValueError):
-                        current_block = []
-                        continue
-                    if "error" in obj:
-                        err = obj["error"]
-                        raise RuntimeError(
-                            f"MCP error {err.get('code', '?')}: {err.get('message', str(err))}"
-                        )
-                    if "result" in obj:
-                        result = self._extract_tool_result(obj["result"])
-                        if result:
-                            conv_id_out = result.get("conversation_id") or conv_id_out
-                            full_text = result.get("response", "")
-                            if len(full_text) > len(prev_text):
-                                yield full_text[len(prev_text):]
-                                prev_text = full_text
-                    current_block = []
-
-            # Handle trailing block without a final blank line
-            if current_block:
-                try:
-                    obj = json.loads("".join(current_block).rstrip("\n"))
-                    if "error" in obj:
-                        err = obj["error"]
-                        raise RuntimeError(
-                            f"MCP error {err.get('code', '?')}: {err.get('message', str(err))}"
-                        )
-                    if "result" in obj:
-                        result = self._extract_tool_result(obj["result"])
-                        if result:
-                            conv_id_out = result.get("conversation_id") or conv_id_out
-                            full_text = result.get("response", "")
-                            if len(full_text) > len(prev_text):
-                                yield full_text[len(prev_text):]
-                except (json.JSONDecodeError, ValueError):
-                    pass
-
-            yield {"conversation_id": conv_id_out, "_done": True}
+        yield StreamEvent(done=True, conversation_id=conv_id_out)
 
     @staticmethod
     def _extract_tool_result(result: dict) -> Optional[dict]:
@@ -213,6 +135,9 @@ class HttpMixin:
     def raw_request(self, method: str, params: dict | None = None) -> dict:
         """Send a raw MCP JSON-RPC request and return the result.
 
+        .. deprecated::
+            Use ``client.low_level.raw_request()`` instead.
+
         Args:
             method: JSON-RPC method name (e.g. ``"tools/list"``).
             params: JSON-RPC params dict.
@@ -220,12 +145,20 @@ class HttpMixin:
         Returns:
             Parsed ``result`` dict from the JSON-RPC response.
         """
+        warnings.warn(
+            "client.raw_request() is deprecated — use client.low_level.raw_request() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return self._mcp_request(method, params or {})
 
     def http_request(
         self, endpoint: str, method: str = "POST", **kwargs: Any
     ) -> httpx.Response:
         """Make a raw HTTP request to the SuperMe API.
+
+        .. deprecated::
+            Use ``client.low_level.http_request()`` instead.
 
         Args:
             endpoint: Path (e.g. ``"/health"``).
@@ -235,6 +168,11 @@ class HttpMixin:
         Returns:
             ``httpx.Response`` object.
         """
+        warnings.warn(
+            "client.http_request() is deprecated — use client.low_level.http_request() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return self._http.request(method, endpoint, **kwargs)
 
     def _next_rpc_id(self) -> int:
@@ -318,7 +256,7 @@ class HttpMixin:
 
     @staticmethod
     def _check_rest_response(resp: "httpx.Response") -> None:
-        """Raise with the API error message on non-2xx responses."""
+        """Raise a typed exception on non-2xx REST responses."""
         if resp.is_success:
             return
         try:
@@ -326,4 +264,11 @@ class HttpMixin:
             msg = body.get("error") or body.get("message") or resp.text
         except Exception:
             msg = resp.text
-        raise RuntimeError(msg)
+        status = resp.status_code
+        if status in (401, 403):
+            raise AuthError(msg, status_code=status)
+        if status == 404:
+            raise NotFoundError(msg, status_code=status)
+        if status == 429:
+            raise RateLimitError(msg, status_code=status)
+        raise APIError(msg, status_code=status)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import Optional
 
 
@@ -45,3 +46,27 @@ class ChatCompletion:
         self.choices: list[Choice] = [Choice(c) for c in data.get("choices", [])]
         self.usage = Usage(data.get("usage") or {})
         self.metadata: Optional[dict] = data.get("metadata")
+
+
+@dataclass
+class StreamEvent:
+    """A single event yielded by streaming methods.
+
+    Example::
+
+        for event in client.ask_my_agent_stream("Summarise my last 3 posts"):
+            if event.done:
+                print("conversation_id:", event.conversation_id)
+            else:
+                print(event.text, end="", flush=True)
+
+    Attributes:
+        text: Text chunk (empty string on the done event).
+        done: True on the final event — no more events will follow.
+        conversation_id: Populated on the done event so callers can capture the ID
+            without making a second API call.
+    """
+
+    text: str = field(default="")
+    done: bool = field(default=False)
+    conversation_id: Optional[str] = field(default=None)

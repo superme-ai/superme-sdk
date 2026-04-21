@@ -13,6 +13,7 @@ import pytest
 import respx
 
 from superme_sdk.client import SuperMeClient
+from superme_sdk.exceptions import SuperMeError
 
 REST_BASE = "https://www.superme.ai"
 
@@ -79,7 +80,7 @@ class TestStartInterview:
             return_value=httpx.Response(422, json={"error": "invalid role"})
         )
         client = SuperMeClient(api_key=FAKE_JWT)
-        with pytest.raises(RuntimeError):
+        with pytest.raises(SuperMeError):
             client.start_interview(role_id="bad_role")
         client.close()
 
@@ -152,7 +153,9 @@ class TestListMyInterviews:
 
 
 class TestStreamInterview:
-    @pytest.mark.parametrize("status", ["completed", "scoring", "scored", "failed", "withdrawn"])
+    @pytest.mark.parametrize(
+        "status", ["completed", "scoring", "scored", "failed", "withdrawn"]
+    )
     @respx.mock
     def test_stream_terminal_status_stops_after_one_event(self, status):
         content = f'data: {{"event": "status", "status": "{status}"}}\n\n'.encode()
@@ -209,9 +212,10 @@ class TestSendInterviewMessage:
     def test_send_message_basic(self):
         """send_interview_message POSTs to agent route with message in body."""
         import json
-        route = respx.post(
-            f"{REST_BASE}/api/v3/agent/interview/iv_1/message"
-        ).mock(return_value=httpx.Response(200, json={"interview_id": "iv_1"}))
+
+        route = respx.post(f"{REST_BASE}/api/v3/agent/interview/iv_1/message").mock(
+            return_value=httpx.Response(200, json={"interview_id": "iv_1"})
+        )
         client = SuperMeClient(api_key=FAKE_JWT)
         client.send_interview_message("iv_1", "Hello!")
         body = json.loads(route.calls[0].request.content)
@@ -223,6 +227,7 @@ class TestSendInterviewMessage:
     @respx.mock
     def test_send_message_with_stage_number(self):
         import json
+
         route = respx.post(f"{REST_BASE}/api/v3/agent/interview/iv_1/message").mock(
             return_value=httpx.Response(200, json={})
         )
@@ -235,11 +240,18 @@ class TestSendInterviewMessage:
     @respx.mock
     def test_send_message_with_attachments(self):
         import json
+
         route = respx.post(f"{REST_BASE}/api/v3/agent/interview/iv_1/message").mock(
             return_value=httpx.Response(200, json={})
         )
         client = SuperMeClient(api_key=FAKE_JWT)
-        atts = [{"gcs_path": "gs://b/f.pdf", "filename": "cv.pdf", "content_type": "application/pdf"}]
+        atts = [
+            {
+                "gcs_path": "gs://b/f.pdf",
+                "filename": "cv.pdf",
+                "content_type": "application/pdf",
+            }
+        ]
         client.send_interview_message("iv_1", "see attachment", attachments=atts)
         body = json.loads(route.calls[0].request.content)
         assert body["attachments"] == atts
@@ -251,7 +263,7 @@ class TestSendInterviewMessage:
             return_value=httpx.Response(400, json={"error": "bad request"})
         )
         client = SuperMeClient(api_key=FAKE_JWT)
-        with pytest.raises(RuntimeError):
+        with pytest.raises(SuperMeError):
             client.send_interview_message("iv_1", "hi")
         client.close()
 

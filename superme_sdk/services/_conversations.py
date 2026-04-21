@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import Any, Optional
 
 
 class ConversationsMixin:
-
     def ask(
         self,
         question: str,
@@ -58,7 +58,7 @@ class ConversationsMixin:
     ) -> tuple:
         """Ask with conversation history.
 
-        Deprecated:
+        .. deprecated::
             Use :meth:`ask` with ``conversation_id`` instead.
             Only the last user message in ``messages`` is actually sent;
             the rest of the list is ignored.
@@ -85,6 +85,11 @@ class ConversationsMixin:
         Returns:
             ``(answer_text, conversation_id)``
         """
+        warnings.warn(
+            "ask_with_history() is deprecated — use ask() with conversation_id instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         response = self.chat.completions.create(
             messages=messages,
             username=username,
@@ -96,12 +101,15 @@ class ConversationsMixin:
         conv_id = (response.metadata or {}).get("conversation_id")
         return response.choices[0].message.content, conv_id
 
-    def mcp_tool_call(self, tool_name: str, arguments: dict) -> dict:
+    def mcp_tool_call(self, tool_name: str, arguments: dict) -> Any:
         """Call any MCP tool by name and return the parsed result.
+
+        .. deprecated::
+            Use ``client.low_level.tool_call()`` instead.
 
         Example:
             ```python
-            result = client.mcp_tool_call("get_profile", {"identifier": "ludo"})
+            result = client.low_level.tool_call("get_profile", {"identifier": "ludo"})
             ```
 
         Args:
@@ -111,14 +119,22 @@ class ConversationsMixin:
         Returns:
             Parsed JSON dict from the tool's response content.
         """
+        warnings.warn(
+            "client.mcp_tool_call() is deprecated — use client.low_level.tool_call() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return self._mcp_tool_call(tool_name, arguments)
 
     def mcp_list_tools(self) -> list[dict]:
         """List all available MCP tools.
 
+        .. deprecated::
+            Use ``client.low_level.list_tools()`` instead.
+
         Example:
             ```python
-            tools = client.mcp_list_tools()
+            tools = client.low_level.list_tools()
             for t in tools:
                 print(t["name"])
             ```
@@ -126,6 +142,11 @@ class ConversationsMixin:
         Returns:
             List of tool definitions.
         """
+        warnings.warn(
+            "client.mcp_list_tools() is deprecated — use client.low_level.list_tools() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         data = self._mcp_request("tools/list", {})
         return data.get("tools", [])
 
@@ -181,22 +202,17 @@ class ConversationsMixin:
 
         Example:
             ```python
-            for chunk in client.ask_my_agent_stream("Summarise my last 3 posts"):
-                if isinstance(chunk, str):
-                    print(chunk, end="", flush=True)
-                elif isinstance(chunk, dict) and chunk.get("_done"):
-                    conv_id = chunk["conversation_id"]
+            for event in client.ask_my_agent_stream("Summarise my last 3 posts"):
+                if event.done:
+                    print("conversation_id:", event.conversation_id)
+                else:
+                    print(event.text, end="", flush=True)
             ```
 
-        Yields string chunks as they arrive from the server via SSE.
-        The last item is always a dict
-        ``{"conversation_id": ..., "_done": True}`` so callers can capture
-        the conversation ID without a second call.
+        Yields :class:`~superme_sdk.models.StreamEvent` objects.
+        The final event has ``done=True`` and ``conversation_id`` set.
         """
-        # if self._is_stream_endpoint:
         yield from self._stream_direct(question, conversation_id=conversation_id)
-        # else:
-        #     yield from self._stream_mcp(question, conversation_id=conversation_id)
 
     def ask_my_agent(
         self,
