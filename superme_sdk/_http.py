@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import base64
 import json
-import warnings
 from typing import Any, Generator, Optional
 
 import httpx
@@ -119,49 +118,6 @@ class HttpMixin:
                     yield StreamEvent(text=line)
 
         yield StreamEvent(done=True, conversation_id=conv_id_out)
-
-    def raw_request(self, method: str, params: dict | None = None) -> dict:
-        """Send a raw MCP JSON-RPC request and return the result.
-
-        .. deprecated::
-            Use ``client.low_level.raw_request()`` instead.
-
-        Args:
-            method: JSON-RPC method name (e.g. ``"tools/list"``).
-            params: JSON-RPC params dict.
-
-        Returns:
-            Parsed ``result`` dict from the JSON-RPC response.
-        """
-        warnings.warn(
-            "client.raw_request() is deprecated — use client.low_level.raw_request() instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self._mcp_request(method, params or {})
-
-    def http_request(
-        self, endpoint: str, method: str = "POST", **kwargs: Any
-    ) -> httpx.Response:
-        """Make a raw HTTP request to the SuperMe API.
-
-        .. deprecated::
-            Use ``client.low_level.http_request()`` instead.
-
-        Args:
-            endpoint: Path (e.g. ``"/health"``).
-            method: HTTP method.
-            **kwargs: Passed to ``httpx.Client.request``.
-
-        Returns:
-            ``httpx.Response`` object.
-        """
-        warnings.warn(
-            "client.http_request() is deprecated — use client.low_level.http_request() instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self._http.request(method, endpoint, **kwargs)
 
     def _next_rpc_id(self) -> int:
         self._rpc_id += 1

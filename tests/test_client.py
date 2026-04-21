@@ -245,25 +245,6 @@ def test_http_error_is_superme_error():
     client.close()
 
 
-# ---- raw_request ----
-
-
-@respx.mock
-def test_raw_request():
-    tools_response = {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "result": {"tools": [{"name": "ask", "description": "Ask a question"}]},
-    }
-    respx.post(f"{MCP_BASE}/mcp/").mock(
-        return_value=httpx.Response(200, json=tools_response)
-    )
-    client = SuperMeClient(api_key="tok")
-    result = client.raw_request("tools/list")
-    assert result["tools"][0]["name"] == "ask"
-    client.close()
-
-
 # ---- context manager ----
 
 
