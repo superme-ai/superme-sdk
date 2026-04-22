@@ -180,52 +180,6 @@ class InterviewsMixin:
         self._check_rest_response(resp)
         return resp.json()
 
-    def get_interview_upload_url(
-        self,
-        interview_id: str,
-        filename: str,
-        content_type: str,
-    ) -> dict:
-        """Get a signed URL to upload a file attachment for an interview.
-
-        Use the returned ``upload_url`` (HTTP PUT) to upload the file, then
-        pass the ``gcs_path`` as an attachment in :meth:`send_interview_message`.
-
-        Example:
-            ```python
-            urls = client.get_interview_upload_url(
-                "interview_abc123",
-                filename="solution.py",
-                content_type="text/x-python",
-            )
-            # PUT your file to urls["upload_url"]
-            # Then pass urls["gcs_path"] in attachments
-            client.send_interview_message(
-                "interview_abc123",
-                "See attached solution.",
-                attachments=[{
-                    "gcs_path": urls["gcs_path"],
-                    "filename": urls["filename"],
-                    "content_type": urls["content_type"],
-                }],
-            )
-            ```
-
-        Args:
-            interview_id: The interview session ID.
-            filename: Name of the file to upload.
-            content_type: MIME type (e.g. ``"application/pdf"``).
-
-        Returns:
-            Dict with ``upload_url`` (PUT), ``read_url`` (GET), ``gcs_path``,
-            ``filename``, and ``content_type``.
-        """
-        resp = self._rest_http.post(
-            f"/api/v3/agent/interview/{interview_id}/upload-url",
-            json={"filename": filename, "content_type": content_type},
-        )
-        self._check_rest_response(resp)
-        return resp.json()
 
     def stream_interview(self, interview_id: str):
         """Stream interview events via SSE from ``GET /api/v3/agent/interview/{id}/stream``.

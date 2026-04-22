@@ -40,7 +40,6 @@ class TestContractAllMethodsExist:
             "send_interview_message",
             "submit_interview",
             "send_interview_feedback",
-            "get_interview_upload_url",
         ]
         for name in expected:
             assert hasattr(SuperMeClient, name), f"SuperMeClient missing method: {name}"
@@ -329,59 +328,6 @@ class TestSendInterviewFeedback:
         client.close()
 
 
-class TestGetInterviewUploadUrl:
-    @respx.mock
-    def test_upload_url_posts_correct_body(self):
-        import json
-
-        route = respx.post(
-            f"{REST_BASE}/api/v3/agent/interview/iv_1/upload-url"
-        ).mock(
-            return_value=httpx.Response(
-                200,
-                json={
-                    "upload_url": "https://storage.googleapis.com/upload",
-                    "read_url": "https://storage.googleapis.com/read",
-                    "gcs_path": "interviews/iv_1/abc_solution.py",
-                    "filename": "solution.py",
-                    "content_type": "text/x-python",
-                },
-            )
-        )
-        client = SuperMeClient(api_key=FAKE_JWT)
-        client.get_interview_upload_url("iv_1", "solution.py", "text/x-python")
-        body = json.loads(route.calls[0].request.content)
-        assert body == {"filename": "solution.py", "content_type": "text/x-python"}
-        client.close()
-
-    @respx.mock
-    def test_upload_url_returns_all_fields(self):
-        expected = {
-            "upload_url": "https://storage.googleapis.com/upload",
-            "read_url": "https://storage.googleapis.com/read",
-            "gcs_path": "interviews/iv_1/abc_solution.py",
-            "filename": "solution.py",
-            "content_type": "text/x-python",
-        }
-        respx.post(
-            f"{REST_BASE}/api/v3/agent/interview/iv_1/upload-url"
-        ).mock(return_value=httpx.Response(200, json=expected))
-        client = SuperMeClient(api_key=FAKE_JWT)
-        result = client.get_interview_upload_url("iv_1", "solution.py", "text/x-python")
-        assert result == expected
-        client.close()
-
-    @respx.mock
-    def test_upload_url_4xx_raises(self):
-        respx.post(
-            f"{REST_BASE}/api/v3/agent/interview/iv_1/upload-url"
-        ).mock(return_value=httpx.Response(403, json={"error": "Not authorized"}))
-        client = SuperMeClient(api_key=FAKE_JWT)
-        with pytest.raises(SuperMeError):
-            client.get_interview_upload_url("iv_1", "file.pdf", "application/pdf")
-        client.close()
-
-
 # ---------------------------------------------------------------------------
 # Part B — Live e2e tests (require SUPERME_API_KEY, run with -m live)
 # ---------------------------------------------------------------------------
@@ -488,18 +434,4 @@ def test_live_send_interview_feedback(live_rest_client):
     assert isinstance(result, dict)
 
 
-@pytest.mark.live
-def test_live_get_interview_upload_url(live_rest_client):
-    """get_interview_upload_url returns upload_url, read_url, and gcs_path."""
-    interviews = live_rest_client.list_my_interviews()
-    active = [i for i in interviews if i.get("status") in ("active", "awaiting_input", "in_progress")]
-    if not active:
-        pytest.skip("No active interviews for this account")
-    interview_id = active[0]["interview_id"]
-    result = live_rest_client.get_interview_upload_url(
-        interview_id, filename="test.txt", content_type="text/plain"
-    )
-    assert isinstance(result, dict)
-    assert "upload_url" in result
-    assert "gcs_path" in result
     assert "read_url" in result
