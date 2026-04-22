@@ -38,6 +38,8 @@ class TestContractAllMethodsExist:
             "list_my_interviews",
             "stream_interview",
             "send_interview_message",
+            "submit_interview",
+            "send_interview_feedback",
         ]
         for name in expected:
             assert hasattr(SuperMeClient, name), f"SuperMeClient missing method: {name}"
@@ -268,6 +270,64 @@ class TestSendInterviewMessage:
         client.close()
 
 
+class TestSubmitInterview:
+    @respx.mock
+    def test_submit_posts_to_correct_url(self):
+        route = respx.post(f"{REST_BASE}/api/v3/interview/iv_1/submit").mock(
+            return_value=httpx.Response(200, json={"status": "submitted"})
+        )
+        client = SuperMeClient(api_key=FAKE_JWT)
+        result = client.submit_interview("iv_1")
+        assert route.called
+        assert result == {"status": "submitted"}
+        client.close()
+
+    @respx.mock
+    def test_submit_4xx_raises(self):
+        respx.post(f"{REST_BASE}/api/v3/interview/iv_1/submit").mock(
+            return_value=httpx.Response(409, json={"error": "already submitted"})
+        )
+        client = SuperMeClient(api_key=FAKE_JWT)
+        with pytest.raises(SuperMeError):
+            client.submit_interview("iv_1")
+        client.close()
+
+
+class TestSendInterviewFeedback:
+    @respx.mock
+    def test_feedback_posts_correct_body(self):
+        import json
+
+        route = respx.post(
+            f"{REST_BASE}/api/v3/agent/interview/iv_1/feedback"
+        ).mock(return_value=httpx.Response(200, json={"success": True}))
+        client = SuperMeClient(api_key=FAKE_JWT)
+        client.send_interview_feedback("iv_1", stage_number=1, rating=4, comments="Good")
+        body = json.loads(route.calls[0].request.content)
+        assert body == {"stage_number": 1, "rating": 4, "comments": "Good"}
+        client.close()
+
+    @respx.mock
+    def test_feedback_returns_response(self):
+        respx.post(
+            f"{REST_BASE}/api/v3/agent/interview/iv_1/feedback"
+        ).mock(return_value=httpx.Response(200, json={"success": True, "stage": 1}))
+        client = SuperMeClient(api_key=FAKE_JWT)
+        result = client.send_interview_feedback("iv_1", stage_number=1, rating=5, comments="Excellent")
+        assert result == {"success": True, "stage": 1}
+        client.close()
+
+    @respx.mock
+    def test_feedback_4xx_raises(self):
+        respx.post(
+            f"{REST_BASE}/api/v3/agent/interview/iv_1/feedback"
+        ).mock(return_value=httpx.Response(404, json={"error": "Interview not found"}))
+        client = SuperMeClient(api_key=FAKE_JWT)
+        with pytest.raises(SuperMeError):
+            client.send_interview_feedback("iv_1", stage_number=1, rating=3, comments="ok")
+        client.close()
+
+
 # ---------------------------------------------------------------------------
 # Part B — Live e2e tests (require SUPERME_API_KEY, run with -m live)
 # ---------------------------------------------------------------------------
@@ -347,3 +407,31 @@ def test_live_get_interview_transcript(live_rest_client):
     result = live_rest_client.get_interview_transcript(interviews[0]["interview_id"])
     assert isinstance(result, dict)
     assert "transcript" in result
+
+
+@pytest.mark.live
+def test_live_send_interview_feedback(live_rest_client):
+    """send_interview_feedback succeeds for a completed interview with stages."""
+    interviews = live_rest_client.list_my_interviews()
+    completed = [i for i in interviews if i.get("status") in ("completed", "scored", "scoring")]
+    if not completed:
+        pytest.skip("No completed interviews for this account")
+    interview_id = completed[0]["interview_id"]
+    # Get the actual stage numbers from the transcript
+    transcript = live_rest_client.get_interview_transcript(interview_id)
+    stages = transcript.get("transcript") or []
+    if not stages:
+        pytest.skip("No stages in transcript")
+    # Use the stage_number field from the first stage if present, else index 1
+    first_stage = stages[0]
+    stage_number = first_stage.get("stage_number") or first_stage.get("number") or 1
+    result = live_rest_client.send_interview_feedback(
+        interview_id,
+        stage_number=stage_number,
+        rating=5,
+        comments="Live test feedback — automated.",
+    )
+    assert isinstance(result, dict)
+
+
+    assert "read_url" in result

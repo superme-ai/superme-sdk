@@ -67,6 +67,40 @@ class ProfilesMixin:
             {"names": names, "limit_per_name": limit_per_name},
         )
 
+    def find_users_on_topic(
+        self,
+        question: str,
+        *,
+        max_results: int = 10,
+        excluded_user_ids: list[str] | None = None,
+    ) -> dict:
+        """Find SuperMe users who are experts on a topic.
+
+        Unlike :meth:`perspective_search` (which returns answers), this returns
+        *who* knows about the topic — useful for resolving experts before calling
+        :meth:`ask`.
+
+        Example:
+            ```python
+            result = client.find_users_on_topic("product-led growth")
+            for expert in result["users"]:
+                print(expert["username"], expert["score"])
+            ```
+
+        Args:
+            question: A topic or question to find experts on.
+            max_results: Maximum number of experts to return (1-20, default 10).
+            excluded_user_ids: User IDs to exclude from results.
+
+        Returns:
+            Dict with ``users`` list, each having ``username``, ``user_id``,
+            and relevance info.
+        """
+        args: dict[str, Any] = {"question": question, "max_results": max_results}
+        if excluded_user_ids is not None:
+            args["excluded_user_ids"] = excluded_user_ids
+        return self._mcp_tool_call("find_users_on_topic", args)
+
     def perspective_search(self, question: str) -> dict:
         """Get perspectives from multiple experts on a topic.
 

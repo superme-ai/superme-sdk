@@ -378,3 +378,85 @@ def test_live_mcp_tool_call(live_client, live_username):
     )
     assert isinstance(result, dict)
     assert "response" in result
+
+
+# ---------------------------------------------------------------------------
+# find_users_on_topic unit tests
+# ---------------------------------------------------------------------------
+
+FAKE_JWT_PROFILES = "eyJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoidWlkXzEyMyJ9.sig"
+MCP_BASE_PROFILES = "https://mcp.superme.ai"
+
+FIND_USERS_RESULT = {
+    "users": [
+        {"user_id": "u1", "username": "alice", "score": 0.9},
+        {"user_id": "u2", "username": "bob", "score": 0.7},
+    ]
+}
+
+FIND_USERS_RPC_RESPONSE = {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": {
+        "content": [{"type": "text", "text": json.dumps(FIND_USERS_RESULT)}],
+    },
+}
+
+
+class TestFindUsersOnTopic:
+    @respx.mock
+    def test_calls_mcp_tool_with_question(self):
+        route = respx.post(f"{MCP_BASE_PROFILES}/mcp/").mock(
+            return_value=httpx.Response(200, json=FIND_USERS_RPC_RESPONSE)
+        )
+        client = SuperMeClient(api_key=FAKE_JWT_PROFILES)
+        client.find_users_on_topic("product-led growth")
+        body = json.loads(route.calls[0].request.content)
+        assert body["method"] == "tools/call"
+        assert body["params"]["name"] == "find_users_on_topic"
+        assert body["params"]["arguments"]["question"] == "product-led growth"
+        assert body["params"]["arguments"]["max_results"] == 10
+        client.close()
+
+    @respx.mock
+    def test_custom_max_results(self):
+        route = respx.post(f"{MCP_BASE_PROFILES}/mcp/").mock(
+            return_value=httpx.Response(200, json=FIND_USERS_RPC_RESPONSE)
+        )
+        client = SuperMeClient(api_key=FAKE_JWT_PROFILES)
+        client.find_users_on_topic("scaling teams", max_results=5)
+        body = json.loads(route.calls[0].request.content)
+        assert body["params"]["arguments"]["max_results"] == 5
+        client.close()
+
+    @respx.mock
+    def test_excluded_user_ids_forwarded(self):
+        route = respx.post(f"{MCP_BASE_PROFILES}/mcp/").mock(
+            return_value=httpx.Response(200, json=FIND_USERS_RPC_RESPONSE)
+        )
+        client = SuperMeClient(api_key=FAKE_JWT_PROFILES)
+        client.find_users_on_topic("growth", excluded_user_ids=["u99"])
+        body = json.loads(route.calls[0].request.content)
+        assert body["params"]["arguments"]["excluded_user_ids"] == ["u99"]
+        client.close()
+
+    @respx.mock
+    def test_excluded_user_ids_omitted_when_none(self):
+        route = respx.post(f"{MCP_BASE_PROFILES}/mcp/").mock(
+            return_value=httpx.Response(200, json=FIND_USERS_RPC_RESPONSE)
+        )
+        client = SuperMeClient(api_key=FAKE_JWT_PROFILES)
+        client.find_users_on_topic("growth")
+        body = json.loads(route.calls[0].request.content)
+        assert "excluded_user_ids" not in body["params"]["arguments"]
+        client.close()
+
+    @respx.mock
+    def test_returns_parsed_result(self):
+        respx.post(f"{MCP_BASE_PROFILES}/mcp/").mock(
+            return_value=httpx.Response(200, json=FIND_USERS_RPC_RESPONSE)
+        )
+        client = SuperMeClient(api_key=FAKE_JWT_PROFILES)
+        result = client.find_users_on_topic("growth")
+        assert result == FIND_USERS_RESULT
+        client.close()

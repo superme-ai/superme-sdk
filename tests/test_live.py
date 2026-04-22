@@ -52,6 +52,14 @@ def test_live_perspective_search(live_client):
     assert "perspectives" in result or "answer" in result or "status" in result
 
 
+@pytest.mark.live
+def test_live_find_users_on_topic(live_client):
+    result = live_client.find_users_on_topic("product-led growth", max_results=3)
+    assert isinstance(result, dict)
+    users = result.get("users") or result.get("results") or []
+    assert isinstance(users, list)
+
+
 # ---------------------------------------------------------------------------
 # Conversations
 # ---------------------------------------------------------------------------

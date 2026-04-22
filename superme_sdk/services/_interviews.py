@@ -122,6 +122,65 @@ class InterviewsMixin:
         self._check_rest_response(resp)
         return resp.json()
 
+    def submit_interview(self, interview_id: str) -> dict:
+        """Submit a completed interview for scoring.
+
+        Example:
+            ```python
+            result = client.submit_interview("interview_abc123")
+            print(result["status"])  # "submitted"
+            ```
+
+        Args:
+            interview_id: The interview session ID.
+
+        Returns:
+            Dict with updated interview status.
+        """
+        resp = self._rest_http.post(f"/api/v3/interview/{interview_id}/submit")
+        self._check_rest_response(resp)
+        return resp.json()
+
+    def send_interview_feedback(
+        self,
+        interview_id: str,
+        stage_number: int,
+        rating: int,
+        comments: str,
+    ) -> dict:
+        """Leave feedback on an interview stage.
+
+        Example:
+            ```python
+            result = client.send_interview_feedback(
+                "interview_abc123",
+                stage_number=1,
+                rating=4,
+                comments="Good questions, well-structured.",
+            )
+            ```
+
+        Args:
+            interview_id: The interview session ID.
+            stage_number: The stage number to leave feedback on.
+            rating: Rating from 1 to 5.
+            comments: Feedback comments text.
+
+        Returns:
+            Dict with feedback confirmation.
+        """
+        resp = self._rest_http.post(
+            f"/api/v3/agent/interview/{interview_id}/feedback",
+            json={
+                "stage_number": stage_number,
+                "rating": rating,
+                "comments": comments,
+            },
+        )
+        self._check_rest_response(resp)
+        return resp.json()
+
+
     def stream_interview(self, interview_id: str):
         """Stream interview events via SSE from ``GET /api/v3/agent/interview/{id}/stream``.
 
