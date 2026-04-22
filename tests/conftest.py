@@ -111,7 +111,7 @@ def live_username() -> str:
 
 
 @pytest.fixture(scope="session")
-def async_live_client(live_api_key, backend_url, backend_alive):
+async def async_live_client(live_api_key, backend_url, backend_alive):
     """Real AsyncSuperMeClient — skips automatically when backend is not reachable."""
     if not backend_alive:
         pytest.skip(
@@ -119,7 +119,9 @@ def async_live_client(live_api_key, backend_url, backend_alive):
         )
     from superme_sdk.client import AsyncSuperMeClient
 
-    return AsyncSuperMeClient(api_key=live_api_key, base_url=backend_url)
+    client = AsyncSuperMeClient(api_key=live_api_key, base_url=backend_url)
+    yield client
+    await client.aclose()
 
 
 # ---------------------------------------------------------------------------

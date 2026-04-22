@@ -24,10 +24,6 @@ class AsyncHttpMixin:
     provided by that class and do not need to be duplicated here.
     """
 
-    def _next_rpc_id(self) -> int:
-        self._rpc_id += 1
-        return self._rpc_id
-
     async def _async_mcp_request(self, method: str, params: dict) -> dict:
         """Send an async JSON-RPC 2.0 request to /mcp."""
         payload = {

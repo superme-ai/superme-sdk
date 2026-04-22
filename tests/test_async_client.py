@@ -45,9 +45,8 @@ async def test_async_client_raises_on_empty_key():
 
 
 async def test_async_client_stores_token():
-    client = AsyncSuperMeClient(api_key="test-key")
-    assert client.token == "test-key"
-    await client.aclose()
+    async with AsyncSuperMeClient(api_key="test-key") as client:
+        assert client.token == "test-key"
 
 
 async def test_async_client_context_manager():
@@ -70,11 +69,8 @@ async def test_ask_my_agent_stream_yields_text_events():
     respx.post(f"{MCP_BASE}/mcp/chat/stream").mock(
         return_value=httpx.Response(200, content=sse)
     )
-    client = AsyncSuperMeClient(api_key="tok")
-    events = []
-    async for ev in client.ask_my_agent_stream("hi"):
-        events.append(ev)
-    await client.aclose()
+    async with AsyncSuperMeClient(api_key="tok") as client:
+        events = [ev async for ev in client.ask_my_agent_stream("hi")]
 
     text_events = [e for e in events if not e.done]
     assert len(text_events) == 2
@@ -92,14 +88,10 @@ async def test_ask_my_agent_stream_final_event_has_done_true():
     respx.post(f"{MCP_BASE}/mcp/chat/stream").mock(
         return_value=httpx.Response(200, content=sse)
     )
-    client = AsyncSuperMeClient(api_key="tok")
-    events = []
-    async for ev in client.ask_my_agent_stream("hi"):
-        events.append(ev)
-    await client.aclose()
+    async with AsyncSuperMeClient(api_key="tok") as client:
+        events = [ev async for ev in client.ask_my_agent_stream("hi")]
 
-    done_event = events[-1]
-    assert done_event.done is True
+    assert events[-1].done is True
 
 
 @respx.mock
@@ -112,14 +104,10 @@ async def test_ask_my_agent_stream_propagates_conversation_id():
     respx.post(f"{MCP_BASE}/mcp/chat/stream").mock(
         return_value=httpx.Response(200, content=sse)
     )
-    client = AsyncSuperMeClient(api_key="tok")
-    events = []
-    async for ev in client.ask_my_agent_stream("hi"):
-        events.append(ev)
-    await client.aclose()
+    async with AsyncSuperMeClient(api_key="tok") as client:
+        events = [ev async for ev in client.ask_my_agent_stream("hi")]
 
-    done_event = events[-1]
-    assert done_event.conversation_id == "conv_abc"
+    assert events[-1].conversation_id == "conv_abc"
 
 
 @respx.mock
@@ -127,10 +115,9 @@ async def test_ask_my_agent_stream_passes_conversation_id_in_payload():
     route = respx.post(f"{MCP_BASE}/mcp/chat/stream").mock(
         return_value=httpx.Response(200, content=_sse({"type": "done"}))
     )
-    client = AsyncSuperMeClient(api_key="tok")
-    async for _ in client.ask_my_agent_stream("hi", conversation_id="conv_existing"):
-        pass
-    await client.aclose()
+    async with AsyncSuperMeClient(api_key="tok") as client:
+        async for _ in client.ask_my_agent_stream("hi", conversation_id="conv_existing"):
+            pass
 
     body = json.loads(route.calls[0].request.content)
     assert body["conversation_id"] == "conv_existing"
@@ -151,9 +138,8 @@ async def test_ask_my_agent_returns_dict():
             ),
         )
     )
-    client = AsyncSuperMeClient(api_key="tok")
-    result = await client.ask_my_agent("What is PMF?")
-    await client.aclose()
+    async with AsyncSuperMeClient(api_key="tok") as client:
+        result = await client.ask_my_agent("What is PMF?")
     assert result["response"] == "Great question!"
 
 
@@ -172,11 +158,8 @@ async def test_group_converse_stream_yields_perspectives():
     respx.post(f"{MCP_BASE}/mcp/chat/stream/group_converse").mock(
         return_value=httpx.Response(200, content=sse)
     )
-    client = AsyncSuperMeClient(api_key="tok")
-    events = []
-    async for ev in client.group_converse_stream(["alice", "bob"], topic="AI future"):
-        events.append(ev)
-    await client.aclose()
+    async with AsyncSuperMeClient(api_key="tok") as client:
+        events = [ev async for ev in client.group_converse_stream(["alice", "bob"], topic="AI future")]
 
     perspectives = [e for e in events if e.get("type") == "perspective"]
     assert len(perspectives) == 2
@@ -193,11 +176,8 @@ async def test_group_converse_stream_final_event_has_done():
     respx.post(f"{MCP_BASE}/mcp/chat/stream/group_converse").mock(
         return_value=httpx.Response(200, content=sse)
     )
-    client = AsyncSuperMeClient(api_key="tok")
-    events = []
-    async for ev in client.group_converse_stream(["alice", "bob"], topic="test"):
-        events.append(ev)
-    await client.aclose()
+    async with AsyncSuperMeClient(api_key="tok") as client:
+        events = [ev async for ev in client.group_converse_stream(["alice", "bob"], topic="test")]
 
     done_event = events[-1]
     assert done_event.get("_done") is True
@@ -219,11 +199,8 @@ async def test_stream_interview_yields_events():
     respx.get(f"{REST_BASE}/api/v3/agent/interview/iv_123/stream").mock(
         return_value=httpx.Response(200, content=sse)
     )
-    client = AsyncSuperMeClient(api_key="tok")
-    events = []
-    async for ev in client.stream_interview("iv_123"):
-        events.append(ev)
-    await client.aclose()
+    async with AsyncSuperMeClient(api_key="tok") as client:
+        events = [ev async for ev in client.stream_interview("iv_123")]
 
     assert len(events) == 3
     assert events[0]["event"] == "stage_change"
@@ -241,11 +218,8 @@ async def test_stream_interview_stops_on_terminal_status():
     respx.get(f"{REST_BASE}/api/v3/agent/interview/iv_term/stream").mock(
         return_value=httpx.Response(200, content=sse)
     )
-    client = AsyncSuperMeClient(api_key="tok")
-    events = []
-    async for ev in client.stream_interview("iv_term"):
-        events.append(ev)
-    await client.aclose()
+    async with AsyncSuperMeClient(api_key="tok") as client:
+        events = [ev async for ev in client.stream_interview("iv_term")]
 
     assert len(events) == 2
     assert events[-1]["status"] == "completed"
@@ -262,9 +236,8 @@ async def test_get_interview_transcript_returns_dict():
     respx.get(f"{REST_BASE}/api/v3/interview/iv_abc/transcript").mock(
         return_value=httpx.Response(200, json=transcript_data)
     )
-    client = AsyncSuperMeClient(api_key="tok")
-    result = await client.get_interview_transcript("iv_abc")
-    await client.aclose()
+    async with AsyncSuperMeClient(api_key="tok") as client:
+        result = await client.get_interview_transcript("iv_abc")
     assert result["transcript"] == transcript_data["transcript"]
 
 
@@ -279,9 +252,8 @@ async def test_get_agentic_resume_returns_dict():
     respx.get(f"{REST_BASE}/api/v3/agentic-resume").mock(
         return_value=httpx.Response(200, json=resume_data)
     )
-    client = AsyncSuperMeClient(api_key="tok")
-    result = await client.get_agentic_resume()
-    await client.aclose()
+    async with AsyncSuperMeClient(api_key="tok") as client:
+        result = await client.get_agentic_resume()
     assert result["structured_data"] == {"name": "Test"}
 
 
@@ -290,9 +262,8 @@ async def test_get_agentic_resume_404_returns_null_structured_data():
     respx.get(f"{REST_BASE}/api/v3/agentic-resume").mock(
         return_value=httpx.Response(404, json={"error": "not found"})
     )
-    client = AsyncSuperMeClient(api_key="tok")
-    result = await client.get_agentic_resume()
-    await client.aclose()
+    async with AsyncSuperMeClient(api_key="tok") as client:
+        result = await client.get_agentic_resume()
     assert result["structured_data"] is None
 
 
@@ -306,10 +277,9 @@ async def test_async_client_401_raises_auth_error():
     respx.get(f"{REST_BASE}/api/v3/agentic-resume").mock(
         return_value=httpx.Response(401, json={"error": "unauthorized"})
     )
-    client = AsyncSuperMeClient(api_key="bad-key")
-    with pytest.raises(AuthError):
-        await client.get_agentic_resume()
-    await client.aclose()
+    async with AsyncSuperMeClient(api_key="bad-key") as client:
+        with pytest.raises(AuthError):
+            await client.get_agentic_resume()
 
 
 @respx.mock
@@ -324,10 +294,9 @@ async def test_async_client_mcp_error_raises():
             },
         )
     )
-    client = AsyncSuperMeClient(api_key="tok")
-    with pytest.raises(MCPError, match="MCP error -32600"):
-        await client.ask_my_agent("hi")
-    await client.aclose()
+    async with AsyncSuperMeClient(api_key="tok") as client:
+        with pytest.raises(MCPError, match="MCP error -32600"):
+            await client.ask_my_agent("hi")
 
 
 # ---------------------------------------------------------------------------
