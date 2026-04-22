@@ -108,3 +108,30 @@ def live_client(live_api_key, backend_url, backend_alive):
 def live_username() -> str:
     """SuperMe username to use in live tests (override with SUPERME_TEST_USERNAME)."""
     return os.getenv("SUPERME_TEST_USERNAME", "ludo")
+
+
+@pytest.fixture(scope="session")
+def async_live_client(live_api_key, backend_url, backend_alive):
+    """Real AsyncSuperMeClient — skips automatically when backend is not reachable."""
+    if not backend_alive:
+        pytest.skip(
+            "Backend not reachable or SUPERME_API_KEY not set — skipping live tests"
+        )
+    from superme_sdk.client import AsyncSuperMeClient
+
+    return AsyncSuperMeClient(api_key=live_api_key, base_url=backend_url)
+
+
+# ---------------------------------------------------------------------------
+# SSE test helpers
+# ---------------------------------------------------------------------------
+
+
+def make_sse_body(*json_objects) -> bytes:
+    """Encode dicts as ``data: <json>\\n\\n`` SSE lines."""
+    import json as _json
+
+    lines = []
+    for obj in json_objects:
+        lines.append(f"data: {_json.dumps(obj)}\n\n")
+    return "".join(lines).encode()

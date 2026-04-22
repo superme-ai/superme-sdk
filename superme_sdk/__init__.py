@@ -1,6 +1,6 @@
 """SuperMe SDK - Python client for SuperMe AI API"""
 
-from .client import SuperMeClient
+from .client import AsyncSuperMeClient, SuperMeClient
 from .auth import load_token, save_token, remove_token, resolve_token
 from .exceptions import (
     SuperMeError,
@@ -15,6 +15,7 @@ from .models import StreamEvent
 __version__ = "0.1.0"
 __all__ = [
     "SuperMeClient",
+    "AsyncSuperMeClient",
     "load_token",
     "save_token",
     "remove_token",

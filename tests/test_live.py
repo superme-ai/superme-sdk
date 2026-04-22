@@ -11,9 +11,6 @@ from __future__ import annotations
 
 import pytest
 
-from superme_sdk.client import SuperMeClient
-from superme_sdk.models import StreamEvent
-
 
 # ---------------------------------------------------------------------------
 # Profiles
@@ -74,7 +71,9 @@ def test_live_ask(live_client, live_username):
 @pytest.mark.live
 def test_live_ask_conversation_continuity(live_client, live_username):
     """Second ask with conversation_id continues the thread."""
-    answer1 = live_client.ask("My name is Test User. Remember that.", username=live_username)
+    answer1 = live_client.ask(
+        "My name is Test User. Remember that.", username=live_username
+    )
     assert isinstance(answer1, str)
 
 

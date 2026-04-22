@@ -271,8 +271,6 @@ def test_chat_completions_create_returns_response_with_content():
         client.close()
 
 
-
-
 # ---------------------------------------------------------------------------
 # close() and context manager
 # ---------------------------------------------------------------------------
