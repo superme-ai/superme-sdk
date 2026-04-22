@@ -55,5 +55,6 @@ nav:
     - Companies & Roles: api/services/companies.md
     - Interviews: api/services/interviews.md
     - Content: api/services/content.md
+    - Library: api/services/library.md
     - Social: api/services/social.md
     - OpenAI-compatible chat: api/chat.md
