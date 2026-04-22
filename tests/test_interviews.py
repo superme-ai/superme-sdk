@@ -471,10 +471,17 @@ def test_live_send_interview_feedback(live_rest_client):
     if not completed:
         pytest.skip("No completed interviews for this account")
     interview_id = completed[0]["interview_id"]
-    # stage_number 0 is always the first stage
+    # Get the actual stage numbers from the transcript
+    transcript = live_rest_client.get_interview_transcript(interview_id)
+    stages = transcript.get("transcript") or []
+    if not stages:
+        pytest.skip("No stages in transcript")
+    # Use the stage_number field from the first stage if present, else index 1
+    first_stage = stages[0]
+    stage_number = first_stage.get("stage_number") or first_stage.get("number") or 1
     result = live_rest_client.send_interview_feedback(
         interview_id,
-        stage_number=0,
+        stage_number=stage_number,
         rating=5,
         comments="Live test feedback — automated.",
     )
