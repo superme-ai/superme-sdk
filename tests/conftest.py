@@ -111,8 +111,15 @@ def live_username() -> str:
 
 
 @pytest.fixture(scope="session")
-async def async_live_client(live_api_key, backend_url, backend_alive):
-    """Real AsyncSuperMeClient — skips automatically when backend is not reachable."""
+def async_live_client(live_api_key, backend_url, backend_alive):
+    """Real AsyncSuperMeClient — skips automatically when backend is not reachable.
+
+    Sync fixture so teardown uses a fresh event loop via ``asyncio.run()`` —
+    avoids "Event loop is closed" errors that occur when session-scoped async
+    fixtures outlive the test event loop.
+    """
+    import asyncio
+
     if not backend_alive:
         pytest.skip(
             "Backend not reachable or SUPERME_API_KEY not set — skipping live tests"
@@ -121,7 +128,7 @@ async def async_live_client(live_api_key, backend_url, backend_alive):
 
     client = AsyncSuperMeClient(api_key=live_api_key, base_url=backend_url)
     yield client
-    await client.aclose()
+    asyncio.run(client.aclose())
 
 
 # ---------------------------------------------------------------------------
