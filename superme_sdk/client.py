@@ -14,6 +14,7 @@ from .services._content import ContentMixin
 from .services._conversations import ConversationsMixin
 from .services._groups import GroupsMixin
 from .services._interviews import InterviewsMixin
+from .services._library import LibraryMixin
 from .services._profiles import ProfilesMixin
 from .services._social import SocialMixin
 from .models import ChatCompletion, Choice, Message, Usage
@@ -79,6 +80,7 @@ class SuperMeClient(
     GroupsMixin,
     CompaniesMixin,
     InterviewsMixin,
+    LibraryMixin,
     ContentMixin,
     SocialMixin,
     HttpMixin,
