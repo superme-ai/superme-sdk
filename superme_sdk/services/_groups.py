@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any, Optional
 
-from .._sse import iter_sse_lines
+from .._transport._sse import iter_sse_lines
 
 
 class GroupsMixin:

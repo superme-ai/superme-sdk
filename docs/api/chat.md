@@ -1,3 +1,3 @@
 # Chat
 
-::: superme_sdk._chat_proxy
+::: superme_sdk._transport._chat_proxy

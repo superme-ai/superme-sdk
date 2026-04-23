@@ -6,7 +6,7 @@ import json
 from typing import Any, AsyncGenerator, Optional
 
 from superme_sdk.models import StreamEvent
-from ..._sse import aiter_sse_lines
+from ..._transport._sse import aiter_sse_lines
 
 
 class AsyncConversationsMixin:
@@ -32,7 +32,7 @@ class AsyncConversationsMixin:
         Yields :class:`~superme_sdk.models.StreamEvent` objects.
         The final event has ``done=True`` and ``conversation_id`` set.
         """
-        from ..._http import _decode_jwt
+        from ..._transport._http import _decode_jwt
 
         payload: dict[str, Any] = {"question": question}
         if conversation_id:

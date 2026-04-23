@@ -6,8 +6,8 @@ from typing import Any, Optional
 
 import httpx
 
-from ._chat_proxy import Chat, Completions
-from ._http import HttpMixin, _decode_jwt
+from ._transport._chat_proxy import Chat, Completions
+from ._transport._http import HttpMixin, _decode_jwt
 from .aio._http import AsyncHttpMixin
 from .services._agentic_resume import AgenticResumeMixin
 from .services._companies import CompaniesMixin
