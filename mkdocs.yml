@@ -49,12 +49,18 @@ nav:
     - Authentication: api/auth.md
     - Client: api/client.md
     - Models: api/models.md
-    - Conversations: api/services/conversations.md
-    - Profiles: api/services/profiles.md
-    - Groups: api/services/groups.md
-    - Companies & Roles: api/services/companies.md
-    - Interviews: api/services/interviews.md
-    - Content: api/services/content.md
-    - Library: api/services/library.md
-    - Social: api/services/social.md
+    - Sync:
+      - Conversations: api/services/conversations.md
+      - Profiles: api/services/profiles.md
+      - Groups: api/services/groups.md
+      - Companies & Roles: api/services/companies.md
+      - Interviews: api/services/interviews.md
+      - Content: api/services/content.md
+      - Library: api/services/library.md
+      - Social: api/services/social.md
+    - Async (aio):
+      - Conversations: api/services/aio/conversations.md
+      - Groups: api/services/aio/groups.md
+      - Interviews: api/services/aio/interviews.md
+      - Agentic Resume: api/services/aio/agentic_resume.md
     - OpenAI-compatible chat: api/chat.md

@@ -6,18 +6,22 @@ from typing import Any, Optional
 
 import httpx
 
-from ._async_http import AsyncHttpMixin
 from ._chat_proxy import Chat, Completions
 from ._http import HttpMixin, _decode_jwt
-from .services._agentic_resume import AgenticResumeMixin, AsyncAgenticResumeMixin
+from .aio._http import AsyncHttpMixin
+from .services._agentic_resume import AgenticResumeMixin
 from .services._companies import CompaniesMixin
 from .services._content import ContentMixin
-from .services._conversations import AsyncConversationsMixin, ConversationsMixin
-from .services._groups import AsyncGroupsMixin, GroupsMixin
-from .services._interviews import AsyncInterviewsMixin, InterviewsMixin
+from .services._conversations import ConversationsMixin
+from .services._groups import GroupsMixin
+from .services._interviews import InterviewsMixin
 from .services._library import LibraryMixin
 from .services._profiles import ProfilesMixin
 from .services._social import SocialMixin
+from .services.aio._agentic_resume import AsyncAgenticResumeMixin
+from .services.aio._conversations import AsyncConversationsMixin
+from .services.aio._groups import AsyncGroupsMixin
+from .services.aio._interviews import AsyncInterviewsMixin
 from .models import ChatCompletion, Choice, Message, Usage
 
 # Re-export for backward compatibility:
