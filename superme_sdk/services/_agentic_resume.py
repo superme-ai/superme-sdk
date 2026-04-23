@@ -1,4 +1,4 @@
-"""Agentic resume methods."""
+"""Agentic resume methods — sync."""
 
 from __future__ import annotations
 

@@ -99,7 +99,8 @@ class TestGetLearnings:
         client.close()
 
     def test_raises_if_no_user_id(self):
-        import base64, json as _json
+        import base64
+        import json as _json
 
         empty_payload = (
             base64.urlsafe_b64encode(_json.dumps({}).encode()).rstrip(b"=").decode()
@@ -183,7 +184,8 @@ class TestGetIngestionStatus:
         client.close()
 
     def test_raises_if_no_user_id(self):
-        import base64, json as _json
+        import base64
+        import json as _json
 
         empty_payload = (
             base64.urlsafe_b64encode(_json.dumps({}).encode()).rstrip(b"=").decode()
@@ -236,11 +238,7 @@ def test_live_get_learning_roundtrip(live_lib_client):
     first = items[0]
     # Items may be wrapped: {metadata: {id: ...}, content: {...}} or flat {learning_id: ...}
     meta = first.get("metadata") or first
-    learning_id = (
-        meta.get("learning_id")
-        or meta.get("id")
-        or meta.get("content_id")
-    )
+    learning_id = meta.get("learning_id") or meta.get("id") or meta.get("content_id")
     assert learning_id, f"item missing id: {first}"
     try:
         detail = live_lib_client.get_learning(learning_id)

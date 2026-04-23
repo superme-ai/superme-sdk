@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "superme-sdk"
-version = "0.1.0"
+version = "0.2.0"
 description = "Python SDK for SuperMe AI API with OpenAI-compatible interface"
 readme = "README.md"
 authors = [
@@ -31,6 +31,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
+    "pytest-asyncio>=0.23.0",
     "pytest-cov>=3.0.0",
     "respx>=0.21.0",
     "ruff>=0.1.0",
@@ -53,3 +54,8 @@ target-version = "py38"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "live: tests that require SUPERME_API_KEY and a real backend",
+]
+addopts = "-m 'not live'"

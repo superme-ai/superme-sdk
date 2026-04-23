@@ -6,8 +6,9 @@ from typing import Any, Optional
 
 import httpx
 
-from ._chat_proxy import Chat, Completions
-from ._http import HttpMixin, _decode_jwt
+from ._transport._chat_proxy import Chat, Completions
+from ._transport._http import HttpMixin, _decode_jwt
+from .aio._http import AsyncHttpMixin
 from .services._agentic_resume import AgenticResumeMixin
 from .services._companies import CompaniesMixin
 from .services._content import ContentMixin
@@ -17,6 +18,10 @@ from .services._interviews import InterviewsMixin
 from .services._library import LibraryMixin
 from .services._profiles import ProfilesMixin
 from .services._social import SocialMixin
+from .services.aio._agentic_resume import AsyncAgenticResumeMixin
+from .services.aio._conversations import AsyncConversationsMixin
+from .services.aio._groups import AsyncGroupsMixin
+from .services.aio._interviews import AsyncInterviewsMixin
 from .models import ChatCompletion, Choice, Message, Usage
 
 # Re-export for backward compatibility:
@@ -70,7 +75,6 @@ class LowLevel:
         """
         data = self._client._mcp_request("tools/list", {})
         return data.get("tools", [])
-
 
 
 class SuperMeClient(
@@ -172,3 +176,94 @@ class SuperMeClient(
 
     def __exit__(self, *args: Any) -> None:
         self.close()
+
+
+class AsyncSuperMeClient(
+    AsyncAgenticResumeMixin,
+    AsyncConversationsMixin,
+    AsyncGroupsMixin,
+    AsyncInterviewsMixin,
+    AsyncHttpMixin,
+    # HttpMixin provides _check_rest_response, _parse_sse_json, _decode_jwt via MRO
+    HttpMixin,
+):
+    """Async SuperMe API client.
+
+    Drop-in async counterpart to :class:`SuperMeClient`.  Use with
+    ``async with`` or call :meth:`aclose` when done.
+
+    Example::
+
+        async with AsyncSuperMeClient(api_key="your-superme-api-key") as client:
+            async for event in client.ask_my_agent_stream("Summarise my last 3 posts"):
+                if event.done:
+                    print("done, conv_id:", event.conversation_id)
+                else:
+                    print(event.text, end="", flush=True)
+
+            async for event in client.stream_interview("interview_abc123"):
+                print(event)
+    """
+
+    def __init__(
+        self,
+        api_key: str,
+        base_url: str = "https://mcp.superme.ai",
+        rest_base_url: str = "https://www.superme.ai",
+        timeout: float = 120.0,
+    ):
+        if not api_key:
+            raise ValueError("api_key is required")
+        self.api_key = api_key
+        self.base_url = base_url.rstrip("/")
+        self.rest_base_url = rest_base_url.rstrip("/")
+        _auth_headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        }
+        self._async_http = httpx.AsyncClient(
+            base_url=self.base_url,
+            headers=_auth_headers,
+            timeout=timeout,
+            follow_redirects=True,
+        )
+        self._async_rest_http = httpx.AsyncClient(
+            base_url=self.rest_base_url,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+                "Accept": "application/json, text/event-stream",
+            },
+            timeout=timeout,
+        )
+        self._rpc_id = 0
+
+    # ------------------------------------------------------------------
+    # Properties (mirrors SuperMeClient)
+    # ------------------------------------------------------------------
+
+    @property
+    def token(self) -> str:
+        """Current API token."""
+        return self.api_key
+
+    @property
+    def user_id(self) -> Optional[str]:
+        """Extract user_id from the JWT token payload."""
+        return _decode_jwt(self.api_key).get("user_id")
+
+    # ------------------------------------------------------------------
+    # Async context manager / cleanup
+    # ------------------------------------------------------------------
+
+    async def aclose(self) -> None:
+        """Close the underlying async HTTP clients."""
+        await self._async_rest_http.aclose()
+        await self._async_http.aclose()
+
+    async def __aenter__(self) -> "AsyncSuperMeClient":
+        return self
+
+    async def __aexit__(self, *args: Any) -> None:
+        await self.aclose()

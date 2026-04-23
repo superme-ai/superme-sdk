@@ -8,8 +8,9 @@ from typing import Any, Generator, Optional
 
 import httpx
 
-from .exceptions import APIError, AuthError, MCPError, NotFoundError, RateLimitError
-from .models import StreamEvent
+from ._sse import iter_sse_lines
+from ..exceptions import APIError, AuthError, MCPError, NotFoundError, RateLimitError
+from ..models import StreamEvent
 
 
 def _decode_jwt(token: str) -> dict[str, Any]:
@@ -65,57 +66,22 @@ class HttpMixin:
                 resp.read()
             self._check_rest_response(resp)
 
-            buf = ""
-            for raw_chunk in resp.iter_text():
-                buf += raw_chunk
-                while "\n" in buf:
-                    line, buf = buf.split("\n", 1)
-                    line = line.strip()
-                    if not line:
-                        continue
-                    # Strip SSE "data: " prefix if present
-                    if line.startswith("data: "):
-                        line = line[6:]
-                    elif line.startswith("data:"):
-                        line = line[5:]
-                    try:
-                        obj = json.loads(line)
-                    except (json.JSONDecodeError, ValueError):
-                        yield StreamEvent(text=line)
-                        continue
-                    if not isinstance(obj, dict):
-                        continue
-                    msg_type = obj.get("type", "")
-                    metadata = obj.get("metadata") or {}
-                    if msg_type == "session_info":
-                        conv_id_out = metadata.get("session_id") or conv_id_out
-                    elif msg_type == "content":
-                        text = obj.get("content", "")
-                        if text:
-                            yield StreamEvent(text=text)
-                    elif msg_type == "done":
-                        pass
-
-            # Flush any remaining data not terminated by a newline
-            if buf.strip():
-                line = buf.strip()
-                if line.startswith("data: "):
-                    line = line[6:]
-                elif line.startswith("data:"):
-                    line = line[5:]
+            for line in iter_sse_lines(resp):
                 try:
                     obj = json.loads(line)
-                    if isinstance(obj, dict):
-                        msg_type = obj.get("type", "")
-                        metadata = obj.get("metadata") or {}
-                        if msg_type == "session_info":
-                            conv_id_out = metadata.get("session_id") or conv_id_out
-                        elif msg_type == "content":
-                            text = obj.get("content", "")
-                            if text:
-                                yield StreamEvent(text=text)
                 except (json.JSONDecodeError, ValueError):
                     yield StreamEvent(text=line)
+                    continue
+                if not isinstance(obj, dict):
+                    continue
+                msg_type = obj.get("type", "")
+                metadata = obj.get("metadata") or {}
+                if msg_type == "session_info":
+                    conv_id_out = metadata.get("session_id") or conv_id_out
+                elif msg_type == "content":
+                    text = obj.get("content", "")
+                    if text:
+                        yield StreamEvent(text=text)
 
         yield StreamEvent(done=True, conversation_id=conv_id_out)
 

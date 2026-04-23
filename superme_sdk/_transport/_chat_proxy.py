@@ -6,10 +6,10 @@ import time
 import uuid
 from typing import TYPE_CHECKING, Any, Optional
 
-from .models import ChatCompletion
+from ..models import ChatCompletion
 
 if TYPE_CHECKING:
-    from .client import SuperMeClient
+    from ..client import SuperMeClient
 
 
 class Completions:

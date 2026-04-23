@@ -10,7 +10,7 @@ Direct access to the MCP JSON-RPC layer. Use these when no higher-level method e
       show_root_heading: false
       show_root_toc_entry: false
 
-::: superme_sdk._http.HttpMixin
+::: superme_sdk._transport._http.HttpMixin
     options:
       members:
         - raw_request

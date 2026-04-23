@@ -1,7 +1,8 @@
-"""Conversation and MCP tool helper methods."""
+"""Conversation and MCP tool helper methods — sync."""
 
 from __future__ import annotations
 
+import json
 import warnings
 from typing import Any, Generator, Optional
 
@@ -249,3 +250,5 @@ class ConversationsMixin:
         if conversation_id:
             args["conversation_id"] = conversation_id
         return self._mcp_tool_call("ask_my_agent", args)
+
+

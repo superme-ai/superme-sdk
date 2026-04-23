@@ -1,9 +1,11 @@
-"""Group conversation methods."""
+"""Group conversation methods — sync."""
 
 from __future__ import annotations
 
 import json
 from typing import Any, Optional
+
+from .._transport._sse import iter_sse_lines
 
 
 class GroupsMixin:
@@ -90,40 +92,15 @@ class GroupsMixin:
             if not resp.is_success:
                 resp.read()
             self._check_rest_response(resp)
-
-            buf = ""
-            for raw_chunk in resp.iter_text():
-                buf += raw_chunk
-                while "\n" in buf:
-                    line, buf = buf.split("\n", 1)
-                    line = line.strip()
-                    if not line:
-                        continue
-                    if line.startswith("data: "):
-                        line = line[6:]
-                    elif line.startswith("data:"):
-                        line = line[5:]
-                    try:
-                        obj = json.loads(line)
-                    except (json.JSONDecodeError, ValueError):
-                        continue
-                    if not isinstance(obj, dict):
-                        continue
-                    if obj.get("type") == "done":
-                        obj["_done"] = True
-                    yield obj
-            # Flush any remaining data not terminated by a newline
-            if buf.strip():
-                line = buf.strip()
-                if line.startswith("data: "):
-                    line = line[6:]
-                elif line.startswith("data:"):
-                    line = line[5:]
+            for line in iter_sse_lines(resp):
                 try:
                     obj = json.loads(line)
-                    if isinstance(obj, dict):
-                        if obj.get("type") == "done":
-                            obj["_done"] = True
-                        yield obj
                 except (json.JSONDecodeError, ValueError):
-                    pass
+                    continue
+                if not isinstance(obj, dict):
+                    continue
+                if obj.get("type") == "done":
+                    obj["_done"] = True
+                yield obj
+
+

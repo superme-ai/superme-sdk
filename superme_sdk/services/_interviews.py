@@ -1,9 +1,11 @@
-"""Interview methods."""
+"""Interview methods — sync."""
 
 from __future__ import annotations
 
 import json
 from typing import Any
+
+from .._transport._sse import iter_sse_lines
 
 
 class InterviewsMixin:
@@ -180,7 +182,6 @@ class InterviewsMixin:
         self._check_rest_response(resp)
         return resp.json()
 
-
     def stream_interview(self, interview_id: str):
         """Stream interview events via SSE from ``GET /api/v3/agent/interview/{id}/stream``.
 
@@ -209,25 +210,14 @@ class InterviewsMixin:
             if not resp.is_success:
                 resp.read()
             self._check_rest_response(resp)
-            buf = ""
-            for raw in resp.iter_text():
-                buf += raw
-                while "\n" in buf:
-                    line, buf = buf.split("\n", 1)
-                    line = line.strip()
-                    if not line or line.startswith(":"):
-                        continue
-                    if line.startswith("data: "):
-                        line = line[6:]
-                    elif line.startswith("data:"):
-                        line = line[5:]
-                    else:
-                        continue
-                    try:
-                        obj = json.loads(line)
-                    except (json.JSONDecodeError, ValueError):
-                        continue
-                    if isinstance(obj, dict):
-                        yield obj
-                        if obj.get("status") in terminal:
-                            return
+            for line in iter_sse_lines(resp):
+                try:
+                    obj = json.loads(line)
+                except (json.JSONDecodeError, ValueError):
+                    continue
+                if isinstance(obj, dict):
+                    yield obj
+                    if obj.get("status") in terminal:
+                        return
+
+
