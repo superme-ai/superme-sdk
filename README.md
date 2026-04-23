@@ -2,6 +2,9 @@
 
 Python SDK for the SuperMe API. Ask questions to professionals, search expert perspectives, manage your knowledge library, and interact via MCP.
 
+## Documentation
+
+See our latest documentation here for usage: [SuperMe SDK documentation](https://sdkdocs.superme.ai/)
 
 
 ## Installation
