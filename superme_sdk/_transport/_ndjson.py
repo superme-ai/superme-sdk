@@ -23,13 +23,11 @@ def iter_ndjson_lines(response: httpx.Response) -> Generator[str, None, None]:
         while "\n" in buf:
             line, buf = buf.split("\n", 1)
             line = line.strip()
-            if not line or line.startswith(":"):
+            if not line:
                 continue
             yield line
     if buf.strip():
-        line = buf.strip()
-        if not line.startswith(":"):
-            yield line
+        yield buf.strip()
 
 
 async def aiter_ndjson_lines(response: httpx.Response) -> AsyncGenerator[str, None]:
@@ -40,10 +38,8 @@ async def aiter_ndjson_lines(response: httpx.Response) -> AsyncGenerator[str, No
         while "\n" in buf:
             line, buf = buf.split("\n", 1)
             line = line.strip()
-            if not line or line.startswith(":"):
+            if not line:
                 continue
             yield line
     if buf.strip():
-        line = buf.strip()
-        if not line.startswith(":"):
-            yield line
+        yield buf.strip()

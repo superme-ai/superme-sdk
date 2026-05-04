@@ -460,3 +460,73 @@ class TestFindUsersOnTopic:
         result = client.find_users_on_topic("growth")
         assert result == FIND_USERS_RESULT
         client.close()
+
+
+# ---------------------------------------------------------------------------
+# Sync NDJSON streaming (ask_my_agent_stream, group_converse_stream)
+# ---------------------------------------------------------------------------
+
+
+def _ndjson(*objs) -> bytes:
+    """Encode dicts as bare NDJSON lines (no data: prefix) — what /mcp/chat/stream sends."""
+    return "".join(f"{json.dumps(o)}\n" for o in objs).encode()
+
+
+@respx.mock
+def test_sync_ask_my_agent_stream_yields_text_events():
+    ndjson = _ndjson(
+        {"type": "content", "content": "Hello "},
+        {"type": "content", "content": "world"},
+        {"type": "done"},
+    )
+    respx.post(f"{MCP_BASE}/mcp/chat/stream").mock(
+        return_value=httpx.Response(200, content=ndjson)
+    )
+    client = SuperMeClient(api_key="tok")
+    events = list(client.ask_my_agent_stream("hi"))
+    client.close()
+
+    text_events = [e for e in events if not e.done]
+    assert len(text_events) == 2
+    assert text_events[0].text == "Hello "
+    assert text_events[1].text == "world"
+    assert events[-1].done is True
+
+
+@respx.mock
+def test_sync_ask_my_agent_stream_propagates_conversation_id():
+    ndjson = _ndjson(
+        {"type": "session_info", "metadata": {"session_id": "conv_sync"}},
+        {"type": "content", "content": "Hi"},
+        {"type": "done"},
+    )
+    respx.post(f"{MCP_BASE}/mcp/chat/stream").mock(
+        return_value=httpx.Response(200, content=ndjson)
+    )
+    client = SuperMeClient(api_key="tok")
+    events = list(client.ask_my_agent_stream("hi"))
+    client.close()
+
+    assert events[-1].conversation_id == "conv_sync"
+
+
+@respx.mock
+def test_sync_group_converse_stream_yields_perspectives():
+    ndjson = _ndjson(
+        {"type": "perspective", "user_name": "Alice", "content": "My view..."},
+        {"type": "perspective", "user_name": "Bob", "content": "I think..."},
+        {"type": "done", "conversation_id": "gconv_s1"},
+    )
+    respx.post(f"{MCP_BASE}/mcp/chat/stream/group_converse").mock(
+        return_value=httpx.Response(200, content=ndjson)
+    )
+    client = SuperMeClient(api_key="tok")
+    events = list(client.group_converse_stream(["alice", "bob"], topic="test"))
+    client.close()
+
+    perspectives = [e for e in events if e.get("type") == "perspective"]
+    assert len(perspectives) == 2
+    assert perspectives[0]["user_name"] == "Alice"
+    done_event = events[-1]
+    assert done_event.get("_done") is True
+    assert done_event.get("conversation_id") == "gconv_s1"
