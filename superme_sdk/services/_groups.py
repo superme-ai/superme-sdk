@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any, Optional
 
-from .._transport._sse import iter_sse_lines
+from .._transport._ndjson import iter_ndjson_lines
 
 
 class GroupsMixin:
@@ -92,7 +92,7 @@ class GroupsMixin:
             if not resp.is_success:
                 resp.read()
             self._check_rest_response(resp)
-            for line in iter_sse_lines(resp):
+            for line in iter_ndjson_lines(resp):
                 try:
                     obj = json.loads(line)
                 except (json.JSONDecodeError, ValueError):
