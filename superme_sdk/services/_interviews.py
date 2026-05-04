@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from ..models import InterviewStatus
+
 from .._transport._sse import iter_sse_lines
 
 
@@ -29,7 +31,7 @@ class InterviewsMixin:
         self._check_rest_response(resp)
         return resp.json()
 
-    def get_interview_status(self, interview_id: str) -> dict:
+    def get_interview_status(self, interview_id: str) -> InterviewStatus:
         """Poll interview status.
 
         Example:

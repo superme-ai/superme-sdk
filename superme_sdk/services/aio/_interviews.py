@@ -6,6 +6,7 @@ import json
 from typing import Any, AsyncGenerator
 
 from ..._transport._sse import aiter_sse_lines
+from ...models import InterviewStatus
 
 
 class AsyncInterviewsMixin:
@@ -24,7 +25,7 @@ class AsyncInterviewsMixin:
         self._check_rest_response(resp)
         return resp.json()
 
-    async def get_interview_status(self, interview_id: str) -> dict:
+    async def get_interview_status(self, interview_id: str) -> InterviewStatus:
         """Poll interview status (async).
 
         Returns:
