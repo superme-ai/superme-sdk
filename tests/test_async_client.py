@@ -329,3 +329,29 @@ async def test_live_get_agentic_resume(async_live_client):
 async def test_live_stream_interview_list(async_live_client):
     interviews = await async_live_client.list_my_interviews()
     assert isinstance(interviews, list)
+
+
+def _ndjson(*objs) -> bytes:
+    """Encode dicts as bare NDJSON lines (no ``data:`` prefix)."""
+    return "".join(f"{json.dumps(o)}\n" for o in objs).encode()
+
+
+@respx.mock
+async def test_ask_my_agent_stream_ndjson_format():
+    """MCP /mcp/chat/stream sends NDJSON (no data: prefix) — must still work."""
+    ndjson = _ndjson(
+        {"type": "content", "content": "Hello "},
+        {"type": "content", "content": "world"},
+        {"type": "done"},
+    )
+    respx.post(f"{MCP_BASE}/mcp/chat/stream").mock(
+        return_value=httpx.Response(200, content=ndjson)
+    )
+    async with AsyncSuperMeClient(api_key="tok") as client:
+        events = [ev async for ev in client.ask_my_agent_stream("hi")]
+
+    text_events = [e for e in events if not e.done]
+    assert len(text_events) == 2
+    assert text_events[0].text == "Hello "
+    assert text_events[1].text == "world"
+    assert events[-1].done is True
