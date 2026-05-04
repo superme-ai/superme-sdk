@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, TypedDict
 
 
 class Message:
@@ -46,6 +46,23 @@ class ChatCompletion:
         self.choices: list[Choice] = [Choice(c) for c in data.get("choices", [])]
         self.usage = Usage(data.get("usage") or {})
         self.metadata: Optional[dict] = data.get("metadata")
+
+
+class StageInfo(TypedDict, total=False):
+    """A single stage from the interview status API."""
+
+    stage_number: int
+    name: str
+    status: str
+
+
+class InterviewStatus(TypedDict, total=False):
+    """Interview status response from ``get_interview_status``."""
+
+    interview_id: str
+    status: str
+    stages: list[StageInfo]
+    active_stage: int
 
 
 @dataclass

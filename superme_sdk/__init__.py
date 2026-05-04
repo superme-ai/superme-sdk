@@ -10,7 +10,7 @@ from .exceptions import (
     APIError,
     MCPError,
 )
-from .models import StreamEvent
+from .models import StreamEvent, StageInfo, InterviewStatus
 
 __version__ = "0.1.0"
 __all__ = [
@@ -27,4 +27,6 @@ __all__ = [
     "APIError",
     "MCPError",
     "StreamEvent",
+    "StageInfo",
+    "InterviewStatus",
 ]
