@@ -1,8 +1,9 @@
-"""Shared SSE (Server-Sent Events) line-parsing utilities.
+"""SSE (Server-Sent Events) line-parsing utilities.
 
-Both sync and async variants yield the raw ``data:`` content for each SSE line,
-with the ``data:`` prefix stripped and empty / comment lines skipped.
+Yields the raw ``data:`` payload for each SSE event line, stripping the
+``data:`` prefix and skipping empty lines and comment/meta lines.
 
+Used by endpoints that respond with ``text/event-stream`` (e.g. interview).
 Callers are responsible for JSON-decoding the yielded strings.
 """
 
@@ -14,11 +15,7 @@ import httpx
 
 
 def iter_sse_lines(response: httpx.Response) -> Generator[str, None, None]:
-    """Yield SSE data lines from a *synchronous* streaming httpx response.
-
-    Strips the ``data:`` prefix, skips empty lines and SSE comment lines
-    (those starting with ``:``) and handles buffered partial lines.
-    """
+    """Yield SSE data payloads from a *synchronous* streaming httpx response."""
     buf = ""
     for raw in response.iter_text():
         buf += raw
@@ -31,7 +28,6 @@ def iter_sse_lines(response: httpx.Response) -> Generator[str, None, None]:
                 yield line[6:]
             elif line.startswith("data:"):
                 yield line[5:]
-    # Flush any remaining data not terminated by a newline
     if buf.strip():
         line = buf.strip()
         if line.startswith("data: "):
@@ -41,10 +37,7 @@ def iter_sse_lines(response: httpx.Response) -> Generator[str, None, None]:
 
 
 async def aiter_sse_lines(response: httpx.Response) -> AsyncGenerator[str, None]:
-    """Yield SSE data lines from an *async* streaming httpx response.
-
-    Mirrors :func:`iter_sse_lines` but uses ``aiter_text()`` for async iteration.
-    """
+    """Yield SSE data payloads from an *async* streaming httpx response."""
     buf = ""
     async for raw in response.aiter_text():
         buf += raw
@@ -57,7 +50,6 @@ async def aiter_sse_lines(response: httpx.Response) -> AsyncGenerator[str, None]
                 yield line[6:]
             elif line.startswith("data:"):
                 yield line[5:]
-    # Flush any remaining data not terminated by a newline
     if buf.strip():
         line = buf.strip()
         if line.startswith("data: "):

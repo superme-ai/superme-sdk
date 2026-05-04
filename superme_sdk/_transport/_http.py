@@ -8,7 +8,7 @@ from typing import Any, Generator, Optional
 
 import httpx
 
-from ._sse import iter_sse_lines
+from ._ndjson import iter_ndjson_lines
 from ..exceptions import APIError, AuthError, MCPError, NotFoundError, RateLimitError
 from ..models import StreamEvent
 
@@ -66,7 +66,7 @@ class HttpMixin:
                 resp.read()
             self._check_rest_response(resp)
 
-            for line in iter_sse_lines(resp):
+            for line in iter_ndjson_lines(resp):
                 try:
                     obj = json.loads(line)
                 except (json.JSONDecodeError, ValueError):

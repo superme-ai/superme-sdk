@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any, AsyncGenerator, Optional
 
-from ..._transport._sse import aiter_sse_lines
+from ..._transport._ndjson import aiter_ndjson_lines
 
 
 class AsyncGroupsMixin:
@@ -57,7 +57,7 @@ class AsyncGroupsMixin:
             if not resp.is_success:
                 await resp.aread()
             self._check_rest_response(resp)
-            async for line in aiter_sse_lines(resp):
+            async for line in aiter_ndjson_lines(resp):
                 try:
                     obj = json.loads(line)
                 except (json.JSONDecodeError, ValueError):

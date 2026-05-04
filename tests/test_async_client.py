@@ -20,8 +20,13 @@ REST_BASE = "https://www.superme.ai"
 
 
 def _sse(*objs) -> bytes:
-    """Encode dicts as ``data: <json>\\n\\n`` SSE lines."""
+    """Encode dicts as ``data: <json>\\n\\n`` SSE lines (interviews)."""
     return "".join(f"data: {json.dumps(o)}\n\n" for o in objs).encode()
+
+
+def _ndjson(*objs) -> bytes:
+    """Encode dicts as bare NDJSON lines (agent + group_converse endpoints)."""
+    return "".join(f"{json.dumps(o)}\n" for o in objs).encode()
 
 
 def _mcp_tool_response(result_dict: dict) -> dict:
@@ -61,13 +66,13 @@ async def test_async_client_context_manager():
 
 @respx.mock
 async def test_ask_my_agent_stream_yields_text_events():
-    sse = _sse(
+    ndjson = _ndjson(
         {"type": "content", "content": "Hello "},
         {"type": "content", "content": "world"},
         {"type": "done"},
     )
     respx.post(f"{MCP_BASE}/mcp/chat/stream").mock(
-        return_value=httpx.Response(200, content=sse)
+        return_value=httpx.Response(200, content=ndjson)
     )
     async with AsyncSuperMeClient(api_key="tok") as client:
         events = [ev async for ev in client.ask_my_agent_stream("hi")]
@@ -80,13 +85,13 @@ async def test_ask_my_agent_stream_yields_text_events():
 
 @respx.mock
 async def test_ask_my_agent_stream_final_event_has_done_true():
-    sse = _sse(
+    ndjson = _ndjson(
         {"type": "session_info", "metadata": {"session_id": "conv_xyz"}},
         {"type": "content", "content": "Hi"},
         {"type": "done"},
     )
     respx.post(f"{MCP_BASE}/mcp/chat/stream").mock(
-        return_value=httpx.Response(200, content=sse)
+        return_value=httpx.Response(200, content=ndjson)
     )
     async with AsyncSuperMeClient(api_key="tok") as client:
         events = [ev async for ev in client.ask_my_agent_stream("hi")]
@@ -96,13 +101,13 @@ async def test_ask_my_agent_stream_final_event_has_done_true():
 
 @respx.mock
 async def test_ask_my_agent_stream_propagates_conversation_id():
-    sse = _sse(
+    ndjson = _ndjson(
         {"type": "session_info", "metadata": {"session_id": "conv_abc"}},
         {"type": "content", "content": "Hi"},
         {"type": "done"},
     )
     respx.post(f"{MCP_BASE}/mcp/chat/stream").mock(
-        return_value=httpx.Response(200, content=sse)
+        return_value=httpx.Response(200, content=ndjson)
     )
     async with AsyncSuperMeClient(api_key="tok") as client:
         events = [ev async for ev in client.ask_my_agent_stream("hi")]
@@ -113,7 +118,7 @@ async def test_ask_my_agent_stream_propagates_conversation_id():
 @respx.mock
 async def test_ask_my_agent_stream_passes_conversation_id_in_payload():
     route = respx.post(f"{MCP_BASE}/mcp/chat/stream").mock(
-        return_value=httpx.Response(200, content=_sse({"type": "done"}))
+        return_value=httpx.Response(200, content=_ndjson({"type": "done"}))
     )
     async with AsyncSuperMeClient(api_key="tok") as client:
         async for _ in client.ask_my_agent_stream("hi", conversation_id="conv_existing"):
@@ -150,13 +155,13 @@ async def test_ask_my_agent_returns_dict():
 
 @respx.mock
 async def test_group_converse_stream_yields_perspectives():
-    sse = _sse(
+    ndjson = _ndjson(
         {"type": "perspective", "user_name": "Alice", "content": "My view..."},
         {"type": "perspective", "user_name": "Bob", "content": "I think..."},
         {"type": "done", "conversation_id": "gconv_1"},
     )
     respx.post(f"{MCP_BASE}/mcp/chat/stream/group_converse").mock(
-        return_value=httpx.Response(200, content=sse)
+        return_value=httpx.Response(200, content=ndjson)
     )
     async with AsyncSuperMeClient(api_key="tok") as client:
         events = [ev async for ev in client.group_converse_stream(["alice", "bob"], topic="AI future")]
@@ -169,12 +174,12 @@ async def test_group_converse_stream_yields_perspectives():
 
 @respx.mock
 async def test_group_converse_stream_final_event_has_done():
-    sse = _sse(
+    ndjson = _ndjson(
         {"type": "perspective", "user_name": "Alice", "content": "My view..."},
         {"type": "done", "conversation_id": "gconv_2"},
     )
     respx.post(f"{MCP_BASE}/mcp/chat/stream/group_converse").mock(
-        return_value=httpx.Response(200, content=sse)
+        return_value=httpx.Response(200, content=ndjson)
     )
     async with AsyncSuperMeClient(api_key="tok") as client:
         events = [ev async for ev in client.group_converse_stream(["alice", "bob"], topic="test")]
@@ -329,3 +334,5 @@ async def test_live_get_agentic_resume(async_live_client):
 async def test_live_stream_interview_list(async_live_client):
     interviews = await async_live_client.list_my_interviews()
     assert isinstance(interviews, list)
+
+
