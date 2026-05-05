@@ -93,6 +93,64 @@ class LibraryMixin:
         self._check_rest_response(resp)
         return resp.json()
 
+    def search_library(
+        self,
+        query: str,
+        *,
+        platform: Optional[str] = None,
+        limit: int = 20,
+    ) -> dict:
+        """Search the authenticated user's own library by free-text query.
+
+        Hybrid (semantic + lexical) search across notes, links, and social
+        posts. Includes drafts and private rows because the search is
+        self-scoped.
+
+        Example:
+            ```python
+            page = client.search_library("retrieval evaluation")
+            for hit in page["results"]:
+                print(hit["score"], hit["text"][:80])
+
+            # Filter to one platform
+            page = client.search_library("growth", platform="medium", limit=5)
+            ```
+
+        Args:
+            query: Free-text search query (required, non-empty).
+            platform: Optional platform filter (e.g. ``"medium"``, ``"x"``,
+                ``"linkedin"``, ``"github"``, ``"notion"``). ``None`` runs
+                across notes + links + social.
+            limit: Max excerpts to return (1-50, default 20).
+
+        Returns:
+            Dict with ``success`` and ``results`` — a list of excerpts shaped
+            like ``InsightExcerpt`` (id, score, text, type, platform, url,
+            chunk_index, date, ...).
+        """
+        if not query or not query.strip():
+            raise ValueError("query must be a non-empty string")
+        if not 1 <= limit <= 50:
+            raise ValueError("limit must be between 1 and 50")
+
+        uid = self.user_id
+        if not uid:
+            raise ValueError("Cannot extract user_id from token")
+
+        params: dict[str, Any] = {
+            "user_id": uid,
+            "query": query,
+            "limit": limit,
+        }
+        if platform is not None:
+            params["platform"] = platform
+
+        resp = self._rest_http.get("/api/v3/library/search", params=params)
+        if resp.status_code == 404:
+            return {"success": True, "results": []}
+        self._check_rest_response(resp)
+        return resp.json()
+
     def get_ingestion_status(self) -> dict:
         """Check the ingestion status of the authenticated user's library.
 

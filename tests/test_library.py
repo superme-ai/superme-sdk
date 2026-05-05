@@ -28,7 +28,7 @@ FAKE_JWT = "eyJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoidWlkXzEyMyJ9.sig"
 
 class TestContractLibraryMethodsExist:
     def test_all_methods_present(self):
-        expected = ["get_learnings", "get_learning", "get_ingestion_status"]
+        expected = ["get_learnings", "get_learning", "get_ingestion_status", "search_library"]
         for name in expected:
             assert hasattr(SuperMeClient, name), f"SuperMeClient missing method: {name}"
             assert callable(getattr(SuperMeClient, name))
@@ -197,6 +197,102 @@ class TestGetIngestionStatus:
         client.close()
 
 
+class TestSearchLibrary:
+    @respx.mock
+    def test_calls_search_with_user_id_and_query(self):
+        route = respx.get(f"{REST_BASE}/api/v3/library/search").mock(
+            return_value=httpx.Response(200, json={"success": True, "results": []})
+        )
+        client = SuperMeClient(api_key=FAKE_JWT)
+        client.search_library("retrieval evaluation")
+        assert route.called
+        url = str(route.calls[0].request.url)
+        assert "user_id=uid_123" in url
+        assert "query=retrieval+evaluation" in url
+        assert "limit=20" in url
+        assert "platform=" not in url
+        client.close()
+
+    @respx.mock
+    def test_optional_platform_and_limit_forwarded(self):
+        respx.get(f"{REST_BASE}/api/v3/library/search").mock(
+            return_value=httpx.Response(200, json={"success": True, "results": []})
+        )
+        client = SuperMeClient(api_key=FAKE_JWT)
+        client.search_library("growth", platform="medium", limit=5)
+        url = str(respx.calls[0].request.url)
+        assert "platform=medium" in url
+        assert "limit=5" in url
+        client.close()
+
+    @respx.mock
+    def test_returns_response(self):
+        payload = {"success": True, "results": [{"id": "r1", "score": 0.9, "text": "hi"}]}
+        respx.get(f"{REST_BASE}/api/v3/library/search").mock(
+            return_value=httpx.Response(200, json=payload)
+        )
+        client = SuperMeClient(api_key=FAKE_JWT)
+        result = client.search_library("hi")
+        assert result == payload
+        client.close()
+
+    @respx.mock
+    def test_404_returns_empty_results(self):
+        respx.get(f"{REST_BASE}/api/v3/library/search").mock(
+            return_value=httpx.Response(404, json={"success": False, "message": "Learning not found"})
+        )
+        client = SuperMeClient(api_key=FAKE_JWT)
+        result = client.search_library("nothing")
+        assert result == {"success": True, "results": []}
+        client.close()
+
+    @respx.mock
+    def test_other_4xx_raises(self):
+        respx.get(f"{REST_BASE}/api/v3/library/search").mock(
+            return_value=httpx.Response(400, json={"message": "bad request"})
+        )
+        client = SuperMeClient(api_key=FAKE_JWT)
+        with pytest.raises(SuperMeError):
+            client.search_library("query")
+        client.close()
+
+    def test_raises_if_query_is_empty(self):
+        client = SuperMeClient(api_key=FAKE_JWT)
+        with pytest.raises(ValueError, match="non-empty"):
+            client.search_library("")
+        client.close()
+
+    def test_raises_if_query_is_whitespace(self):
+        client = SuperMeClient(api_key=FAKE_JWT)
+        with pytest.raises(ValueError, match="non-empty"):
+            client.search_library("   ")
+        client.close()
+
+    def test_raises_if_limit_too_low(self):
+        client = SuperMeClient(api_key=FAKE_JWT)
+        with pytest.raises(ValueError, match="1 and 50"):
+            client.search_library("pmf", limit=0)
+        client.close()
+
+    def test_raises_if_limit_too_high(self):
+        client = SuperMeClient(api_key=FAKE_JWT)
+        with pytest.raises(ValueError, match="1 and 50"):
+            client.search_library("pmf", limit=51)
+        client.close()
+
+    def test_raises_if_no_user_id(self):
+        import base64
+        import json as _json
+        empty_payload = (
+            base64.urlsafe_b64encode(_json.dumps({}).encode()).rstrip(b"=").decode()
+        )
+        no_uid_jwt = f"eyJhbGciOiJIUzI1NiJ9.{empty_payload}.sig"
+        client = SuperMeClient(api_key=no_uid_jwt)
+        with pytest.raises(ValueError, match="user_id"):
+            client.search_library("anything")
+        client.close()
+
+
 # ---------------------------------------------------------------------------
 # Part B — Live e2e tests (require SUPERME_API_KEY, run with -m live)
 # ---------------------------------------------------------------------------
@@ -252,3 +348,29 @@ def test_live_get_learning_roundtrip(live_lib_client):
 def test_live_get_ingestion_status(live_lib_client):
     result = live_lib_client.get_ingestion_status()
     assert isinstance(result, dict)
+
+
+@pytest.mark.live
+def test_live_search_library_empty_or_results(live_lib_client):
+    """search_library returns a dict with a results list (may be empty)."""
+    result = live_lib_client.search_library("anything", limit=3)
+    assert isinstance(result, dict)
+    assert "results" in result
+
+
+@pytest.mark.live
+def test_live_search_library_with_results(live_lib_client):
+    """When search returns results, verify each hit has the expected shape."""
+    # Try a few generic terms — skip if the index hasn't caught up yet.
+    candidates = ["the", "a", "is", "and", "for", "in", "of"]
+    result = None
+    for q in candidates:
+        r = live_lib_client.search_library(q, limit=5)
+        if r.get("results"):
+            result = r
+            break
+    if result is None:
+        pytest.skip("Search index returned no results for any candidate query — index may not be ready")
+    assert "results" in result
+    hit = result["results"][0]
+    assert "id" in hit or "score" in hit or "text" in hit, f"unexpected hit shape: {hit}"
