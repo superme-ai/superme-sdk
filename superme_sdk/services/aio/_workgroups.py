@@ -17,14 +17,14 @@ class AsyncWorkgroupsMixin:
         """List your workgroups, most recently used first (async)."""
         result = await self._async_mcp_tool_call("list_workgroups", {})
         if isinstance(result, dict):
-            groups = result.get("groups", [])
+            groups = result.get("workgroups", [])
             return groups if isinstance(groups, list) else []
         return []
 
-    async def get_workgroup(self, group_id: str) -> Optional[dict]:
+    async def get_workgroup(self, workgroup_id: str) -> Optional[dict]:
         """Get a single workgroup by ID (async)."""
         result = await self._async_mcp_tool_call(
-            "get_workgroup", {"group_id": group_id}
+            "get_workgroup", {"workgroup_id": workgroup_id}
         )
         if isinstance(result, dict) and "error" not in result:
             return result
@@ -48,7 +48,7 @@ class AsyncWorkgroupsMixin:
 
     async def update_workgroup(
         self,
-        group_id: str,
+        workgroup_id: str,
         *,
         name: Optional[str] = None,
         handle: Optional[str] = None,
@@ -59,7 +59,7 @@ class AsyncWorkgroupsMixin:
 
         ``members`` is a full replacement — pass the complete desired member list.
         """
-        args: dict[str, Any] = {"group_id": group_id}
+        args: dict[str, Any] = {"workgroup_id": workgroup_id}
         if name is not None:
             args["name"] = name
         if handle is not None:

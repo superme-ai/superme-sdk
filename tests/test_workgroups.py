@@ -37,7 +37,7 @@ def _mock_mcp(payload: dict):
 
 @respx.mock
 def test_list_workgroups_returns_list():
-    _mock_mcp({"groups": [GROUP], "count": 1})
+    _mock_mcp({"workgroups": [GROUP], "count": 1})
     client = SuperMeClient(api_key="tok")
     result = client.list_workgroups()
     assert result == [GROUP]
@@ -46,7 +46,7 @@ def test_list_workgroups_returns_list():
 
 @respx.mock
 def test_list_workgroups_empty():
-    _mock_mcp({"groups": [], "count": 0})
+    _mock_mcp({"workgroups": [], "count": 0})
     client = SuperMeClient(api_key="tok")
     assert client.list_workgroups() == []
     client.close()
@@ -96,7 +96,7 @@ def test_update_workgroup_only_passes_provided_fields():
     client.update_workgroup("wg_abc", name="renamed")
     body = json.loads(route.calls[0].request.content)
     args = body["params"]["arguments"]
-    assert args == {"group_id": "wg_abc", "name": "renamed"}
+    assert args == {"workgroup_id": "wg_abc", "name": "renamed"}
     client.close()
 
 
@@ -105,7 +105,7 @@ def test_update_workgroup_only_passes_provided_fields():
 async def test_async_list_workgroups():
     from superme_sdk.client import AsyncSuperMeClient
 
-    _mock_mcp({"groups": [GROUP], "count": 1})
+    _mock_mcp({"workgroups": [GROUP], "count": 1})
     async with AsyncSuperMeClient(api_key="tok") as client:
         result = await client.list_workgroups()
         assert result == [GROUP]

@@ -27,24 +27,24 @@ class WorkgroupsMixin:
         """
         result = self._mcp_tool_call("list_workgroups", {})
         if isinstance(result, dict):
-            groups = result.get("groups", [])
-            return groups if isinstance(groups, list) else []
+            workgroups = result.get("workgroups", [])
+            return workgroups if isinstance(workgroups, list) else []
         return []
 
-    def get_workgroup(self, group_id: str) -> Optional[dict]:
+    def get_workgroup(self, workgroup_id: str) -> Optional[dict]:
         """Get a single workgroup by ID.
 
         Example:
             ```python
-            group = client.get_workgroup("abc123")
-            for m in group["members"]:
+            workgroup = client.get_workgroup("abc123")
+            for m in workgroup["members"]:
                 print(m["user_id"], m["name"])
             ```
 
         Returns:
-            Workgroup dict, or ``None`` if no group with that ID exists.
+            Workgroup dict, or ``None`` if no workgroup with that ID exists.
         """
-        result = self._mcp_tool_call("get_workgroup", {"group_id": group_id})
+        result = self._mcp_tool_call("get_workgroup", {"workgroup_id": workgroup_id})
         if isinstance(result, dict) and "error" not in result:
             return result
         return None
@@ -61,7 +61,7 @@ class WorkgroupsMixin:
 
         Example:
             ```python
-            group = client.create_workgroup(
+            workgroup = client.create_workgroup(
                 name="Growth advisory board",
                 handle="growth-board",
                 members=[
@@ -69,7 +69,7 @@ class WorkgroupsMixin:
                     {"user_id": "def456", "name": "Elena Verna"},
                 ],
             )
-            print(group["id"])
+            print(workgroup["id"])
             ```
 
         Args:
@@ -92,7 +92,7 @@ class WorkgroupsMixin:
 
     def update_workgroup(
         self,
-        group_id: str,
+        workgroup_id: str,
         *,
         name: Optional[str] = None,
         handle: Optional[str] = None,
@@ -117,7 +117,7 @@ class WorkgroupsMixin:
             The updated workgroup dict, or ``{"error": ...}`` on conflict /
             not-found.
         """
-        args: dict[str, Any] = {"group_id": group_id}
+        args: dict[str, Any] = {"workgroup_id": workgroup_id}
         if name is not None:
             args["name"] = name
         if handle is not None:
