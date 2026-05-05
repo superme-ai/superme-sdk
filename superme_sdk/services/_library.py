@@ -146,6 +146,8 @@ class LibraryMixin:
             params["platform"] = platform
 
         resp = self._rest_http.get("/api/v3/library/search", params=params)
+        if resp.status_code == 404:
+            return {"success": True, "results": []}
         self._check_rest_response(resp)
         return resp.json()
 
