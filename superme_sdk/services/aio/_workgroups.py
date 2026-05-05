@@ -1,6 +1,6 @@
-"""Working group methods — async.
+"""Workgroup methods — async.
 
-A *working group* is a saved set of SuperMe users (e.g. a project team or advisory
+A *workgroup* is a saved set of SuperMe users (e.g. a project team or advisory
 board) that the owner has assembled for repeated reference. Members are SuperMe
 users — resolve names via :meth:`find_user_by_name` first.
 """
@@ -10,27 +10,27 @@ from __future__ import annotations
 from typing import Any, Optional
 
 
-class AsyncWorkingGroupsMixin:
-    """Async variants of :class:`~superme_sdk.services._working_groups.WorkingGroupsMixin`."""
+class AsyncWorkgroupsMixin:
+    """Async variants of :class:`~superme_sdk.services._workgroups.WorkgroupsMixin`."""
 
-    async def list_working_groups(self) -> list[dict]:
-        """List your working groups, most recently used first (async)."""
-        result = await self._async_mcp_tool_call("list_working_groups", {})
+    async def list_workgroups(self) -> list[dict]:
+        """List your workgroups, most recently used first (async)."""
+        result = await self._async_mcp_tool_call("list_workgroups", {})
         if isinstance(result, dict):
-            groups = result.get("groups", [])
+            groups = result.get("workgroups", [])
             return groups if isinstance(groups, list) else []
         return []
 
-    async def get_working_group(self, group_id: str) -> Optional[dict]:
-        """Get a single working group by ID (async)."""
+    async def get_workgroup(self, workgroup_id: str) -> Optional[dict]:
+        """Get a single workgroup by ID (async)."""
         result = await self._async_mcp_tool_call(
-            "get_working_group", {"group_id": group_id}
+            "get_workgroup", {"workgroup_id": workgroup_id}
         )
         if isinstance(result, dict) and "error" not in result:
             return result
         return None
 
-    async def create_working_group(
+    async def create_workgroup(
         self,
         name: str,
         handle: str,
@@ -38,28 +38,28 @@ class AsyncWorkingGroupsMixin:
         description: str = "",
         members: Optional[list[dict]] = None,
     ) -> dict:
-        """Create a new working group (async)."""
+        """Create a new workgroup (async)."""
         args: dict[str, Any] = {"name": name, "handle": handle}
         if description:
             args["description"] = description
         if members is not None:
             args["members"] = members
-        return await self._async_mcp_tool_call("create_working_group", args)
+        return await self._async_mcp_tool_call("create_workgroup", args)
 
-    async def update_working_group(
+    async def update_workgroup(
         self,
-        group_id: str,
+        workgroup_id: str,
         *,
         name: Optional[str] = None,
         handle: Optional[str] = None,
         description: Optional[str] = None,
         members: Optional[list[dict]] = None,
     ) -> dict:
-        """Update an existing working group (async).
+        """Update an existing workgroup (async).
 
         ``members`` is a full replacement — pass the complete desired member list.
         """
-        args: dict[str, Any] = {"group_id": group_id}
+        args: dict[str, Any] = {"workgroup_id": workgroup_id}
         if name is not None:
             args["name"] = name
         if handle is not None:
@@ -68,4 +68,4 @@ class AsyncWorkingGroupsMixin:
             args["description"] = description
         if members is not None:
             args["members"] = members
-        return await self._async_mcp_tool_call("update_working_group", args)
+        return await self._async_mcp_tool_call("update_workgroup", args)
