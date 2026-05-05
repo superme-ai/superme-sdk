@@ -28,12 +28,7 @@ FAKE_JWT = "eyJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoidWlkXzEyMyJ9.sig"
 
 class TestContractLibraryMethodsExist:
     def test_all_methods_present(self):
-        expected = [
-            "get_learnings",
-            "get_learning",
-            "get_ingestion_status",
-            "search_library",
-        ]
+        expected = ["get_learnings", "get_learning", "get_ingestion_status"]
         for name in expected:
             assert hasattr(SuperMeClient, name), f"SuperMeClient missing method: {name}"
             assert callable(getattr(SuperMeClient, name))
@@ -202,104 +197,6 @@ class TestGetIngestionStatus:
         client.close()
 
 
-class TestSearchLibrary:
-    @respx.mock
-    def test_calls_search_with_user_id_and_query(self):
-        route = respx.get(f"{REST_BASE}/api/v3/library/search").mock(
-            return_value=httpx.Response(200, json={"success": True, "results": []})
-        )
-        client = SuperMeClient(api_key=FAKE_JWT)
-        client.search_library("retrieval evaluation")
-        assert route.called
-        request_url = str(route.calls[0].request.url)
-        assert "user_id=uid_123" in request_url
-        assert "query=retrieval+evaluation" in request_url
-        assert "limit=20" in request_url
-        assert "platform=" not in request_url
-        client.close()
-
-    @respx.mock
-    def test_optional_platform_and_limit_forwarded(self):
-        route = respx.get(f"{REST_BASE}/api/v3/library/search").mock(
-            return_value=httpx.Response(200, json={"success": True, "results": []})
-        )
-        client = SuperMeClient(api_key=FAKE_JWT)
-        client.search_library("growth", platform="medium", limit=5)
-        request_url = str(route.calls[0].request.url)
-        assert "platform=medium" in request_url
-        assert "limit=5" in request_url
-        client.close()
-
-    @respx.mock
-    def test_returns_response(self):
-        payload = {
-            "success": True,
-            "results": [
-                {
-                    "id": "learning-1",
-                    "score": 0.91,
-                    "text": "PMF is when ...",
-                    "type": "input",
-                    "user_id": "uid_123",
-                }
-            ],
-        }
-        respx.get(f"{REST_BASE}/api/v3/library/search").mock(
-            return_value=httpx.Response(200, json=payload)
-        )
-        client = SuperMeClient(api_key=FAKE_JWT)
-        result = client.search_library("pmf")
-        assert result == payload
-        client.close()
-
-    @respx.mock
-    def test_4xx_raises(self):
-        respx.get(f"{REST_BASE}/api/v3/library/search").mock(
-            return_value=httpx.Response(403, json={"error": "forbidden"})
-        )
-        client = SuperMeClient(api_key=FAKE_JWT)
-        with pytest.raises(SuperMeError):
-            client.search_library("anything")
-        client.close()
-
-    def test_raises_if_no_user_id(self):
-        import base64
-        import json as _json
-
-        empty_payload = (
-            base64.urlsafe_b64encode(_json.dumps({}).encode()).rstrip(b"=").decode()
-        )
-        no_uid_jwt = f"eyJhbGciOiJIUzI1NiJ9.{empty_payload}.sig"
-        client = SuperMeClient(api_key=no_uid_jwt)
-        with pytest.raises(ValueError, match="user_id"):
-            client.search_library("anything")
-        client.close()
-
-    def test_raises_if_query_is_empty(self):
-        client = SuperMeClient(api_key=FAKE_JWT)
-        with pytest.raises(ValueError, match="non-empty"):
-            client.search_library("")
-        client.close()
-
-    def test_raises_if_query_is_whitespace(self):
-        client = SuperMeClient(api_key=FAKE_JWT)
-        with pytest.raises(ValueError, match="non-empty"):
-            client.search_library("   ")
-        client.close()
-
-    def test_raises_if_limit_too_low(self):
-        client = SuperMeClient(api_key=FAKE_JWT)
-        with pytest.raises(ValueError, match="1 and 50"):
-            client.search_library("pmf", limit=0)
-        client.close()
-
-    def test_raises_if_limit_too_high(self):
-        client = SuperMeClient(api_key=FAKE_JWT)
-        with pytest.raises(ValueError, match="1 and 50"):
-            client.search_library("pmf", limit=51)
-        client.close()
-
-
 # ---------------------------------------------------------------------------
 # Part B — Live e2e tests (require SUPERME_API_KEY, run with -m live)
 # ---------------------------------------------------------------------------
@@ -355,11 +252,3 @@ def test_live_get_learning_roundtrip(live_lib_client):
 def test_live_get_ingestion_status(live_lib_client):
     result = live_lib_client.get_ingestion_status()
     assert isinstance(result, dict)
-
-
-@pytest.mark.live
-def test_live_search_library_returns_results(live_lib_client):
-    result = live_lib_client.search_library("anything", limit=3)
-    assert isinstance(result, dict)
-    # Server may return empty results if the account has no library yet.
-    assert "results" in result or "success" in result
