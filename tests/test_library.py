@@ -275,30 +275,6 @@ class TestSearchLibrary:
             client.search_library("anything")
         client.close()
 
-    def test_raises_if_query_is_empty(self):
-        client = SuperMeClient(api_key=FAKE_JWT)
-        with pytest.raises(ValueError, match="non-empty"):
-            client.search_library("")
-        client.close()
-
-    def test_raises_if_query_is_whitespace(self):
-        client = SuperMeClient(api_key=FAKE_JWT)
-        with pytest.raises(ValueError, match="non-empty"):
-            client.search_library("   ")
-        client.close()
-
-    def test_raises_if_limit_too_low(self):
-        client = SuperMeClient(api_key=FAKE_JWT)
-        with pytest.raises(ValueError, match="1 and 50"):
-            client.search_library("pmf", limit=0)
-        client.close()
-
-    def test_raises_if_limit_too_high(self):
-        client = SuperMeClient(api_key=FAKE_JWT)
-        with pytest.raises(ValueError, match="1 and 50"):
-            client.search_library("pmf", limit=51)
-        client.close()
-
 
 # ---------------------------------------------------------------------------
 # Part B — Live e2e tests (require SUPERME_API_KEY, run with -m live)

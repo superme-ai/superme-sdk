@@ -128,11 +128,6 @@ class LibraryMixin:
             like ``InsightExcerpt`` (id, score, text, type, platform, url,
             chunk_index, date, ...).
         """
-        if not query or not query.strip():
-            raise ValueError("query must be a non-empty string")
-        if not 1 <= limit <= 50:
-            raise ValueError("limit must be between 1 and 50")
-
         uid = self.user_id
         if not uid:
             raise ValueError("Cannot extract user_id from token")
