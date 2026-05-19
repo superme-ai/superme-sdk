@@ -53,7 +53,6 @@ nav:
       - Conversations: api/services/conversations.md
       - Profiles: api/services/profiles.md
       - Groups: api/services/groups.md
-      - Companies & Roles: api/services/companies.md
       - Interviews: api/services/interviews.md
       - Content: api/services/content.md
       - Library: api/services/library.md

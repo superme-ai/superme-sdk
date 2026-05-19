@@ -41,7 +41,7 @@ def main():
     print("\n4. Raw JSON-RPC request (tools/call):")
     raw2 = client.raw_request(
         "tools/call",
-        {"name": "get_profile", "arguments": {"username": "ludo"}},
+        {"name": "find_profiles", "arguments": {"identifier": "ludo"}},
     )
     print(f"  Raw result: {str(raw2)[:200]}")
 

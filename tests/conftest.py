@@ -128,7 +128,10 @@ def async_live_client(live_api_key, backend_url, backend_alive):
 
     client = AsyncSuperMeClient(api_key=live_api_key, base_url=backend_url)
     yield client
-    asyncio.run(client.aclose())
+    try:
+        asyncio.run(client.aclose())
+    except RuntimeError:
+        pass  # transport bound to a closed test loop; OS cleans up sockets on exit
 
 
 # ---------------------------------------------------------------------------

@@ -46,15 +46,15 @@ def main():
     for tool in tools:
         print(f"  - {tool['name']}: {tool.get('description', '')[:60]}")
 
-    # 3. MCP tool call - find a user
-    print("\n3. Find user by name:")
-    result = client.mcp_tool_call("find_user_by_name", {"name": "ludo"})
-    print(f"  Result: {result[:200]}")
+    # 3. MCP tool call - find users by name
+    print("\n3. Find profiles by name:")
+    result = client.mcp_tool_call("find_profiles", {"identifier": "ludo"})
+    print(f"  Result: {str(result)[:200]}")
 
-    # 4. MCP tool call - get profile
-    print("\n4. Get profile:")
-    profile = client.mcp_tool_call("get_profile", {"username": "ludo"})
-    print(f"  Profile: {profile[:200]}")
+    # 4. MCP tool call - get my profile
+    print("\n4. Get my profile:")
+    profile = client.mcp_tool_call("get_my_profile", {})
+    print(f"  Profile: {str(profile)[:200]}")
 
     # 5. List conversations
     print("\n5. List conversations:")
