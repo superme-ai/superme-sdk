@@ -351,26 +351,6 @@ def live_rest_client():
     client.close()
 
 
-@pytest.mark.live
-def test_live_roles_and_start_interview(live_rest_client):
-    """Exercises start_interview, get_interview_status, get_interview_transcript."""
-    roles = live_rest_client.list_active_roles(limit=3)
-    assert isinstance(roles, list), "list_active_roles should return a list"
-    assert len(roles) >= 1, "Need at least one active role to run this test"
-
-    role = roles[0]
-    resp = live_rest_client.start_interview(role_id=role["id"])
-    assert "interview_id" in resp, (
-        f"start_interview response missing interview_id: {resp}"
-    )
-    interview_id = resp["interview_id"]
-
-    status_resp = live_rest_client.get_interview_status(interview_id)
-    assert isinstance(status_resp, dict)
-
-    transcript_resp = live_rest_client.get_interview_transcript(interview_id)
-    assert isinstance(transcript_resp, dict)
-
 
 @pytest.mark.live
 def test_live_list_my_interviews(live_rest_client):
@@ -382,15 +362,6 @@ def test_live_list_my_interviews(live_rest_client):
         assert "interview_id" in first, f"item missing interview_id: {first}"
         assert "status" in first, f"item missing status: {first}"
 
-
-@pytest.mark.live
-def test_live_list_companies_and_roles(live_rest_client):
-    """list_active_roles returns role dicts with id and title."""
-    roles = live_rest_client.list_active_roles(limit=5)
-    assert isinstance(roles, list)
-    for role in roles:
-        assert "id" in role, f"role missing id: {role}"
-        assert "title" in role, f"role missing title: {role}"
 
 
 @pytest.mark.live

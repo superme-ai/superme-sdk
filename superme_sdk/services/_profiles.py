@@ -7,26 +7,29 @@ from typing import Any, Optional
 
 class ProfilesMixin:
     def get_profile(self, identifier: Optional[str] = None) -> dict:
-        """Return profile info for a user.
+        """Return public profile info for a user.
 
         Example:
             ```python
-            # your own profile
             me = client.get_profile()
-            # another user — returns {"users": [...], "workgroups": [...]}
-            result = client.get_profile("ludo")
+            profile = client.get_profile("ludo")
+            print(profile["name"], profile["user_id"])
             ```
 
         Args:
             identifier: User ID, username, or full name. Omit for your own profile.
 
         Returns:
-            Own profile dict when called with no identifier; ``{"users", "workgroups"}``
-            dict when an identifier is supplied.
+            Profile dict with ``user_id``, ``name``, ``title``, ``location``,
+            ``avatar_image``. Own profile additionally includes
+            ``connected_accounts`` and ``connected_blogs``.
+            Returns ``{}`` if no match is found.
         """
         if not identifier:
             return self._mcp_tool_call("get_my_profile", {})
-        return self._mcp_tool_call("find_profiles", {"identifier": identifier})
+        result = self._mcp_tool_call("find_profiles", {"identifier": identifier})
+        users = result.get("users", []) if isinstance(result, dict) else []
+        return users[0] if users else {}
 
     def find_user_by_name(self, name: str, *, limit: int = 10) -> dict:
         """Search for SuperMe users by name.

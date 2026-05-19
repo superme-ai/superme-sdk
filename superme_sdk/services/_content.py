@@ -105,19 +105,3 @@ class ContentMixin:
             {"urls": urls, "reference": reference, "instant_recrawl": instant_recrawl},
         )
 
-    def check_uncrawled_urls(self, urls: list[str]) -> dict:
-        """Check which URLs are not yet in your knowledge base.
-
-        Example:
-            ```python
-            result = client.check_uncrawled_urls(["https://myblog.com/post-1"])
-            print(result["uncrawled_urls"])
-            ```
-
-        Args:
-            urls: URLs to check.
-
-        Returns:
-            Dict with ``uncrawled_urls`` list and counts.
-        """
-        return self._mcp_tool_call("check_uncrawled_urls", {"urls": urls})

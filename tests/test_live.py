@@ -19,11 +19,10 @@ import pytest
 
 @pytest.mark.live
 def test_live_get_profile_by_username(live_client, live_username):
-    # get_profile(identifier) → find_profiles → {"users": [...], "workgroups": [...]}
+    # get_profile(identifier) → find_profiles → extracts first user → flat dict
     result = live_client.get_profile(live_username)
     assert isinstance(result, dict), f"expected dict, got {type(result)}"
-    assert "users" in result
-    assert isinstance(result["users"], list)
+    assert "name" in result or "user_id" in result
 
 
 @pytest.mark.live
