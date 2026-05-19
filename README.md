@@ -171,7 +171,7 @@ make test-live
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `start_interview(job_id)` | `dict` | Start a background agent interview. Returns `{"interview_id": ..., "status": "preparing"}`. |
+| `start_interview(role_id)` | `dict` | Start a background agent interview. Returns `{"interview_id": ..., "status": "preparing"}`. |
 | `stream_interview(interview_id)` | `generator` | Stream interview events via SSE. Yields dicts with `event` key; stops at terminal status. |
 | `list_my_interviews()` | `list[dict]` | List your interviews. |
 | `get_interview_status(interview_id)` | `dict` | Poll interview status and stages. |

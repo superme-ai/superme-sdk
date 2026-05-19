@@ -20,9 +20,11 @@ class ProfilesMixin:
             identifier: User ID, username, or full name. Omit for your own profile.
 
         Returns:
-            Profile dict with ``user_id``, ``name``, ``title``, ``location``,
-            ``avatar_image``. Own profile additionally includes
-            ``connected_accounts`` and ``connected_blogs``.
+            When called without ``identifier`` (own profile): dict with ``name``,
+            ``title``, ``location``, ``avatar_image``, ``connected_accounts``,
+            ``connected_blogs``.
+            When called with ``identifier``: flat profile dict with ``user_id``,
+            ``in_network``, ``name``, and other public fields.
             Returns ``{}`` if no match is found.
         """
         if not identifier:

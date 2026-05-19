@@ -511,7 +511,7 @@ def test_get_profile_with_identifier_calls_find_profiles():
 
 @respx.mock
 def test_get_profile_with_identifier_no_match_returns_empty():
-    route = respx.post(f"{MCP_BASE}/mcp/").mock(
+    respx.post(f"{MCP_BASE}/mcp/").mock(
         return_value=_mcp_rpc_ok({"users": [], "workgroups": []})
     )
     with SuperMeClient(api_key=FAKE_JWT_PROFILES) as client:
