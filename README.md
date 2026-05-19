@@ -156,7 +156,6 @@ make test-live
 | `add_internal_content(input, *, extended_content, past_instructions)` | `dict` | Save notes or knowledge to your personal library. |
 | `update_internal_content(learning_id, *, user_input, extended_content, past_instructions)` | `dict` | Update an existing note. |
 | `add_external_content(urls, *, reference, instant_recrawl)` | `dict` | Submit URLs to be crawled and added to your knowledge base. |
-| `check_uncrawled_urls(urls)` | `dict` | Check which URLs are not yet in your knowledge base. |
 
 #### Social accounts
 
@@ -172,7 +171,6 @@ make test-live
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `list_active_roles(*, limit)` | `list[dict]` | List active job roles across all companies. |
 | `start_interview(role_id)` | `dict` | Start a background agent interview. Returns `{"interview_id": ..., "status": "preparing"}`. |
 | `stream_interview(interview_id)` | `generator` | Stream interview events via SSE. Yields dicts with `event` key; stops at terminal status. |
 | `list_my_interviews()` | `list[dict]` | List your interviews. |
@@ -212,7 +210,7 @@ print(response.metadata["conversation_id"])
 tools = client.mcp_list_tools()
 
 # Call a tool directly
-profile = client.mcp_tool_call("get_profile", {"username": "ludo"})
+profiles = client.mcp_tool_call("find_profiles", {"identifier": "ludo"})
 
 # Raw JSON-RPC
 result = client.raw_request("tools/list")

@@ -10,7 +10,6 @@ from ._transport._chat_proxy import Chat, Completions
 from ._transport._http import HttpMixin, _decode_jwt
 from .aio._http import AsyncHttpMixin
 from .services._agentic_resume import AgenticResumeMixin
-from .services._companies import CompaniesMixin
 from .services._content import ContentMixin
 from .services._conversations import ConversationsMixin
 from .services._groups import GroupsMixin
@@ -84,7 +83,6 @@ class SuperMeClient(
     ConversationsMixin,
     ProfilesMixin,
     GroupsMixin,
-    CompaniesMixin,
     InterviewsMixin,
     LibraryMixin,
     ContentMixin,

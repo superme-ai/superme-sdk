@@ -19,14 +19,15 @@ import pytest
 
 @pytest.mark.live
 def test_live_get_profile_by_username(live_client, live_username):
-    profile = live_client.get_profile(live_username)
-    assert isinstance(profile, dict), f"expected dict, got {type(profile)}"
-    # profile has name/title/location/avatar — at least name should be present
-    assert "name" in profile or "username" in profile or "id" in profile
+    # get_profile(identifier) → find_profiles → extracts first user → flat dict
+    result = live_client.get_profile(live_username)
+    assert isinstance(result, dict), f"expected dict, got {type(result)}"
+    assert "name" in result or "user_id" in result
 
 
 @pytest.mark.live
 def test_live_get_own_profile(live_client):
+    # get_profile() → get_my_profile → flat profile dict
     profile = live_client.get_profile()
     assert isinstance(profile, dict)
     assert "name" in profile or "username" in profile or "id" in profile
@@ -34,27 +35,43 @@ def test_live_get_own_profile(live_client):
 
 @pytest.mark.live
 def test_live_find_user_by_name(live_client, live_username):
-    results = live_client.find_user_by_name(live_username)
-    # returns a list of matching user dicts
-    assert isinstance(results, list)
-    assert len(results) > 0
-    assert "name" in results[0]
+    # find_user_by_name → find_profiles → {"users": [...], "workgroups": [...]}
+    result = live_client.find_user_by_name(live_username)
+    assert isinstance(result, dict)
+    assert "users" in result
+    users = result["users"]
+    assert isinstance(users, list)
+    assert len(users) > 0
+    assert "name" in users[0]
+
+
+@pytest.mark.live
+def test_live_find_users_by_names(live_client, live_username):
+    # find_users_by_names → find_profiles(list) → {"results", "resolved_user_ids", "unresolved"}
+    result = live_client.find_users_by_names([live_username, "no-such-user-xyzzy"])
+    assert isinstance(result, dict)
+    assert "results" in result
+    assert "resolved_user_ids" in result
+    assert "unresolved" in result
+    assert isinstance(result["results"], list)
+    assert len(result["results"]) == 2
+    assert len(result["resolved_user_ids"]) >= 1
 
 
 @pytest.mark.live
 def test_live_perspective_search(live_client):
     result = live_client.perspective_search("What is product-market fit?")
     assert isinstance(result, dict)
-    # response shape: {perspectives, question, status, conversation_id}
     assert "perspectives" in result or "answer" in result or "status" in result
 
 
 @pytest.mark.live
 def test_live_find_users_on_topic(live_client):
+    # find_users_on_topic → find_experts → {"question": ..., "experts": [...]}
     result = live_client.find_users_on_topic("product-led growth", max_results=3)
     assert isinstance(result, dict)
-    users = result.get("users") or result.get("results") or []
-    assert isinstance(users, list)
+    assert "experts" in result
+    assert isinstance(result["experts"], list)
 
 
 # ---------------------------------------------------------------------------
@@ -134,9 +151,10 @@ def test_live_low_level_list_tools(live_client):
 @pytest.mark.live
 def test_live_low_level_tool_call(live_client, live_username):
     result = live_client.low_level.tool_call(
-        "get_profile", {"identifier": live_username}
+        "find_profiles", {"identifier": live_username}
     )
     assert isinstance(result, dict)
+    assert "users" in result
 
 
 # ---------------------------------------------------------------------------
