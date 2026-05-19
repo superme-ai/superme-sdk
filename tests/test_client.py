@@ -388,10 +388,11 @@ FAKE_JWT_PROFILES = "eyJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoidWlkXzEyMyJ9.sig"
 MCP_BASE_PROFILES = "https://mcp.superme.ai"
 
 FIND_USERS_RESULT = {
-    "users": [
-        {"user_id": "u1", "username": "alice", "score": 0.9},
-        {"user_id": "u2", "username": "bob", "score": 0.7},
-    ]
+    "question": "product-led growth",
+    "experts": [
+        {"user_id": "u1", "user_name": "alice", "why_selected": "expert", "relevance_score": 0.9},
+        {"user_id": "u2", "user_name": "bob", "why_selected": "expert", "relevance_score": 0.7},
+    ],
 }
 
 FIND_USERS_RPC_RESPONSE = {
@@ -413,7 +414,7 @@ class TestFindUsersOnTopic:
         client.find_users_on_topic("product-led growth")
         body = json.loads(route.calls[0].request.content)
         assert body["method"] == "tools/call"
-        assert body["params"]["name"] == "find_users_on_topic"
+        assert body["params"]["name"] == "find_experts"
         assert body["params"]["arguments"]["question"] == "product-led growth"
         assert body["params"]["arguments"]["max_results"] == 10
         client.close()

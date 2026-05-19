@@ -7,32 +7,35 @@ from typing import Any, Optional
 
 class ProfilesMixin:
     def get_profile(self, identifier: Optional[str] = None) -> dict:
-        """Return public profile info for a user.
+        """Return profile info for a user.
 
         Example:
             ```python
-            profile = client.get_profile("ludo")
-            # or your own profile
+            # your own profile
             me = client.get_profile()
+            # another user — returns {"users": [...], "workgroups": [...]}
+            result = client.get_profile("ludo")
             ```
 
         Args:
             identifier: User ID, username, or full name. Omit for your own profile.
 
         Returns:
-            Profile dict.
+            Own profile dict when called with no identifier; ``{"users", "workgroups"}``
+            dict when an identifier is supplied.
         """
-        args: dict[str, Any] = {}
-        if identifier:
-            args["identifier"] = identifier
-        return self._mcp_tool_call("get_profile", args)
+        if not identifier:
+            return self._mcp_tool_call("get_my_profile", {})
+        return self._mcp_tool_call("find_profiles", {"identifier": identifier})
 
     def find_user_by_name(self, name: str, *, limit: int = 10) -> dict:
         """Search for SuperMe users by name.
 
         Example:
             ```python
-            results = client.find_user_by_name("ludo")
+            result = client.find_user_by_name("ludo")
+            for u in result["users"]:
+                print(u["user_id"], u["name"])
             ```
 
         Args:
@@ -40,9 +43,11 @@ class ProfilesMixin:
             limit: Maximum results to return.
 
         Returns:
-            Dict with match results.
+            Dict with ``users`` (list of matches) and ``workgroups`` keys.
         """
-        return self._mcp_tool_call("find_user_by_name", {"name": name, "limit": limit})
+        return self._mcp_tool_call(
+            "find_profiles", {"identifier": name, "limit": limit}
+        )
 
     def find_users_by_names(
         self, names: list[str], *, limit_per_name: int = 10
@@ -60,11 +65,11 @@ class ProfilesMixin:
             limit_per_name: Maximum matches per name.
 
         Returns:
-            Dict with per-name matches and resolved_user_ids map.
+            Dict with ``results``, ``resolved_user_ids``, and ``unresolved`` keys.
         """
         return self._mcp_tool_call(
-            "find_users_by_names",
-            {"names": names, "limit_per_name": limit_per_name},
+            "find_profiles",
+            {"identifier": names, "limit": limit_per_name},
         )
 
     def find_users_on_topic(
@@ -76,15 +81,11 @@ class ProfilesMixin:
     ) -> dict:
         """Find SuperMe users who are experts on a topic.
 
-        Unlike :meth:`perspective_search` (which returns answers), this returns
-        *who* knows about the topic — useful for resolving experts before calling
-        :meth:`ask`.
-
         Example:
             ```python
             result = client.find_users_on_topic("product-led growth")
-            for expert in result["users"]:
-                print(expert["username"], expert["score"])
+            for expert in result["experts"]:
+                print(expert["user_name"], expert["why_selected"])
             ```
 
         Args:
@@ -93,13 +94,13 @@ class ProfilesMixin:
             excluded_user_ids: User IDs to exclude from results.
 
         Returns:
-            Dict with ``users`` list, each having ``username``, ``user_id``,
-            and relevance info.
+            Dict with ``question`` and ``experts`` list, each having ``user_id``,
+            ``user_name``, ``why_selected``, and ``relevance_score``.
         """
         args: dict[str, Any] = {"question": question, "max_results": max_results}
         if excluded_user_ids is not None:
             args["excluded_user_ids"] = excluded_user_ids
-        return self._mcp_tool_call("find_users_on_topic", args)
+        return self._mcp_tool_call("find_experts", args)
 
     def perspective_search(self, question: str) -> dict:
         """Get perspectives from multiple experts on a topic.
@@ -107,15 +108,15 @@ class ProfilesMixin:
         Example:
             ```python
             result = client.perspective_search("What is product-market fit?")
-            print(result["answer"])
-            for view in result["viewpoints"]:
-                print(view["username"], view["content"])
+            print(result["synthesis"])
+            for p in result["perspectives"]:
+                print(p["expert_name"], p["perspective"])
             ```
 
         Args:
             question: A topic or question to get expert takes on.
 
         Returns:
-            Dict with synthesized answer and individual viewpoints.
+            Dict with ``perspectives`` list and ``synthesis`` string.
         """
-        return self._mcp_tool_call("perspective_search", {"question": question})
+        return self._mcp_tool_call("search_perspective", {"question": question})
