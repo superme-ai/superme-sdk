@@ -12,7 +12,7 @@ from .exceptions import (
 )
 from .models import StreamEvent, StageInfo, InterviewStatus
 
-__version__ = "0.1.0"
+__version__ = "0.6.0"
 __all__ = [
     "SuperMeClient",
     "AsyncSuperMeClient",
