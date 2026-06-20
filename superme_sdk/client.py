@@ -16,12 +16,14 @@ from .services._groups import GroupsMixin
 from .services._interviews import InterviewsMixin
 from .services._library import LibraryMixin
 from .services._profiles import ProfilesMixin
+from .services._provision import ProvisionMixin
 from .services._social import SocialMixin
 from .services._workgroups import WorkgroupsMixin
 from .services.aio._agentic_resume import AsyncAgenticResumeMixin
 from .services.aio._conversations import AsyncConversationsMixin
 from .services.aio._groups import AsyncGroupsMixin
 from .services.aio._interviews import AsyncInterviewsMixin
+from .services.aio._provision import AsyncProvisionMixin
 from .services.aio._workgroups import AsyncWorkgroupsMixin
 from .models import ChatCompletion, Choice, Message, Usage
 
@@ -88,6 +90,7 @@ class SuperMeClient(
     ContentMixin,
     SocialMixin,
     WorkgroupsMixin,
+    ProvisionMixin,
     HttpMixin,
 ):
     """SuperMe API client with OpenAI-compatible interface.
@@ -185,6 +188,7 @@ class AsyncSuperMeClient(
     AsyncGroupsMixin,
     AsyncInterviewsMixin,
     AsyncWorkgroupsMixin,
+    AsyncProvisionMixin,
     AsyncHttpMixin,
     # HttpMixin provides _check_rest_response, _parse_sse_json, _decode_jwt via MRO
     HttpMixin,
