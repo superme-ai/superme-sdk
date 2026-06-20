@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-import asyncio
+import concurrent.futures
+import threading
 from typing import Any, Optional
 
 
@@ -112,25 +113,23 @@ class ProvisionMixin:
             List of result dicts in the same order as ``profiles``.
         """
 
-        async def _run() -> list[dict[str, Any]]:
-            sem = asyncio.Semaphore(_BATCH_CONCURRENCY)
+        sem = threading.Semaphore(_BATCH_CONCURRENCY)
+        results: list[dict[str, Any]] = [{}] * len(profiles)
 
-            async def _one(profile: dict[str, Any]) -> dict[str, Any]:
-                async with sem:
-                    return await asyncio.to_thread(
-                        self.provision_create, community_id, **profile
-                    )
-
-            tasks = [asyncio.create_task(_one(p)) for p in profiles]
-            results = []
-            for task in tasks:
+        def _one(index: int, profile: dict[str, Any]) -> None:
+            with sem:
                 try:
-                    results.append(await task)
+                    results[index] = self.provision_create(community_id, **profile)
                 except Exception as exc:  # noqa: BLE001
-                    results.append({"error": str(exc)})
-            return results
+                    results[index] = {"error": str(exc)}
 
-        return asyncio.run(_run())
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=_BATCH_CONCURRENCY
+        ) as pool:
+            futs = [pool.submit(_one, i, p) for i, p in enumerate(profiles)]
+            concurrent.futures.wait(futs)
+
+        return results
 
     def provision_send_invites(
         self,
