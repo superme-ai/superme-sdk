@@ -3,11 +3,37 @@
 from __future__ import annotations
 
 import concurrent.futures
-import threading
 from typing import Any, Optional
+
+import httpx
 
 
 _BATCH_CONCURRENCY = 10
+
+
+def _provision_body(
+    community_id: str,
+    name: str,
+    linkedin_url: str,
+    contact_email: Optional[str] = None,
+    notes: Optional[str] = None,
+    socials: Optional[dict[str, str]] = None,
+    external_urls: Optional[list[str]] = None,
+) -> dict[str, Any]:
+    body: dict[str, Any] = {
+        "community_id": community_id,
+        "name": name,
+        "linkedin_url": linkedin_url,
+    }
+    if contact_email is not None:
+        body["contact_email"] = contact_email
+    if notes is not None:
+        body["notes"] = notes
+    if socials is not None:
+        body["socials"] = socials
+    if external_urls is not None:
+        body["external_urls"] = external_urls
+    return body
 
 
 class ProvisionMixin:
@@ -49,20 +75,15 @@ class ProvisionMixin:
             Dict with ``provision`` record including ``user_id``, ``token``,
             ``claim_url``, and ``status``.
         """
-        body: dict[str, Any] = {
-            "community_id": community_id,
-            "name": name,
-            "linkedin_url": linkedin_url,
-        }
-        if contact_email is not None:
-            body["contact_email"] = contact_email
-        if notes is not None:
-            body["notes"] = notes
-        if socials is not None:
-            body["socials"] = socials
-        if external_urls is not None:
-            body["external_urls"] = external_urls
-
+        body = _provision_body(
+            community_id,
+            name,
+            linkedin_url,
+            contact_email,
+            notes,
+            socials,
+            external_urls,
+        )
         resp = self._rest_http.post(f"/api/v3/provision/{community_id}", json=body)
         self._check_rest_response(resp)
         return resp.json()
@@ -74,10 +95,10 @@ class ProvisionMixin:
     ) -> list[dict[str, Any]]:
         """Provision multiple community members concurrently.
 
-        Fans out up to 10 concurrent :meth:`provision_create` calls; caller
-        supplies a plain list of profile dicts. Results are returned in the
-        same order as ``profiles``. Failed items have an ``"error"`` key instead
-        of ``"provision"``.
+        Fans out up to 10 concurrent requests using a dedicated batch-scoped
+        HTTP client (avoids sharing the main client across threads). Results
+        are returned in the same order as ``profiles``. Failed items have an
+        ``"error"`` key instead of ``"provision"``.
 
         Example:
             ```python
@@ -112,22 +133,36 @@ class ProvisionMixin:
         Returns:
             List of result dicts in the same order as ``profiles``.
         """
-
-        sem = threading.Semaphore(_BATCH_CONCURRENCY)
         results: list[dict[str, Any]] = [{}] * len(profiles)
 
-        def _one(index: int, profile: dict[str, Any]) -> None:
-            with sem:
-                try:
-                    results[index] = self.provision_create(community_id, **profile)
-                except Exception as exc:  # noqa: BLE001
-                    results[index] = {"error": str(exc)}
+        # Fresh client scoped to this batch — avoids sharing self._rest_http across threads.
+        batch_client = httpx.Client(
+            base_url=self.rest_base_url,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+                "Accept": "application/json, text/event-stream",
+            },
+            timeout=self._rest_http.timeout,
+        )
 
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=_BATCH_CONCURRENCY
-        ) as pool:
-            futs = [pool.submit(_one, i, p) for i, p in enumerate(profiles)]
-            concurrent.futures.wait(futs)
+        def _one(index: int, profile: dict[str, Any]) -> None:
+            try:
+                body = _provision_body(community_id, **profile)
+                resp = batch_client.post(f"/api/v3/provision/{community_id}", json=body)
+                self._check_rest_response(resp)
+                results[index] = resp.json()
+            except Exception as exc:  # noqa: BLE001
+                results[index] = {"error": str(exc)}
+
+        try:
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=_BATCH_CONCURRENCY
+            ) as pool:
+                futs = [pool.submit(_one, i, p) for i, p in enumerate(profiles)]
+                concurrent.futures.wait(futs)
+        finally:
+            batch_client.close()
 
         return results
 
