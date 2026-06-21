@@ -104,4 +104,3 @@ class ContentMixin:
             "add_external_content",
             {"urls": urls, "reference": reference, "instant_recrawl": instant_recrawl},
         )
-

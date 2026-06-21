@@ -221,5 +221,3 @@ class InterviewsMixin:
                     yield obj
                     if obj.get("status") in terminal:
                         return
-
-

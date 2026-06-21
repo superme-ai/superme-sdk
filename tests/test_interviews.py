@@ -351,7 +351,6 @@ def live_rest_client():
     client.close()
 
 
-
 @pytest.mark.live
 def test_live_list_my_interviews(live_rest_client):
     """list_my_interviews returns a list; non-empty items have expected keys."""
@@ -361,7 +360,6 @@ def test_live_list_my_interviews(live_rest_client):
         first = interviews[0]
         assert "interview_id" in first, f"item missing interview_id: {first}"
         assert "status" in first, f"item missing status: {first}"
-
 
 
 @pytest.mark.live

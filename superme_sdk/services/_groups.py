@@ -102,5 +102,3 @@ class GroupsMixin:
                 if obj.get("type") == "done":
                     obj["_done"] = True
                 yield obj
-
-

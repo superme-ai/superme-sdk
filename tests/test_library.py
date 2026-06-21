@@ -28,7 +28,12 @@ FAKE_JWT = "eyJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoidWlkXzEyMyJ9.sig"
 
 class TestContractLibraryMethodsExist:
     def test_all_methods_present(self):
-        expected = ["get_learnings", "get_learning", "get_ingestion_status", "search_library"]
+        expected = [
+            "get_learnings",
+            "get_learning",
+            "get_ingestion_status",
+            "search_library",
+        ]
         for name in expected:
             assert hasattr(SuperMeClient, name), f"SuperMeClient missing method: {name}"
             assert callable(getattr(SuperMeClient, name))
@@ -227,7 +232,10 @@ class TestSearchLibrary:
 
     @respx.mock
     def test_returns_response(self):
-        payload = {"success": True, "results": [{"id": "r1", "score": 0.9, "text": "hi"}]}
+        payload = {
+            "success": True,
+            "results": [{"id": "r1", "score": 0.9, "text": "hi"}],
+        }
         respx.get(f"{REST_BASE}/api/v3/library/search").mock(
             return_value=httpx.Response(200, json=payload)
         )
@@ -239,7 +247,9 @@ class TestSearchLibrary:
     @respx.mock
     def test_404_returns_empty_results(self):
         respx.get(f"{REST_BASE}/api/v3/library/search").mock(
-            return_value=httpx.Response(404, json={"success": False, "message": "Learning not found"})
+            return_value=httpx.Response(
+                404, json={"success": False, "message": "Learning not found"}
+            )
         )
         client = SuperMeClient(api_key=FAKE_JWT)
         result = client.search_library("nothing")
@@ -283,6 +293,7 @@ class TestSearchLibrary:
     def test_raises_if_no_user_id(self):
         import base64
         import json as _json
+
         empty_payload = (
             base64.urlsafe_b64encode(_json.dumps({}).encode()).rstrip(b"=").decode()
         )
@@ -370,7 +381,11 @@ def test_live_search_library_with_results(live_lib_client):
             result = r
             break
     if result is None:
-        pytest.skip("Search index returned no results for any candidate query — index may not be ready")
+        pytest.skip(
+            "Search index returned no results for any candidate query — index may not be ready"
+        )
     assert "results" in result
     hit = result["results"][0]
-    assert "id" in hit or "score" in hit or "text" in hit, f"unexpected hit shape: {hit}"
+    assert "id" in hit or "score" in hit or "text" in hit, (
+        f"unexpected hit shape: {hit}"
+    )

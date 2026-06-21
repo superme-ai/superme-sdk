@@ -121,7 +121,9 @@ async def test_ask_my_agent_stream_passes_conversation_id_in_payload():
         return_value=httpx.Response(200, content=_ndjson({"type": "done"}))
     )
     async with AsyncSuperMeClient(api_key="tok") as client:
-        async for _ in client.ask_my_agent_stream("hi", conversation_id="conv_existing"):
+        async for _ in client.ask_my_agent_stream(
+            "hi", conversation_id="conv_existing"
+        ):
             pass
 
     body = json.loads(route.calls[0].request.content)
@@ -164,7 +166,12 @@ async def test_group_converse_stream_yields_perspectives():
         return_value=httpx.Response(200, content=ndjson)
     )
     async with AsyncSuperMeClient(api_key="tok") as client:
-        events = [ev async for ev in client.group_converse_stream(["alice", "bob"], topic="AI future")]
+        events = [
+            ev
+            async for ev in client.group_converse_stream(
+                ["alice", "bob"], topic="AI future"
+            )
+        ]
 
     perspectives = [e for e in events if e.get("type") == "perspective"]
     assert len(perspectives) == 2
@@ -182,7 +189,10 @@ async def test_group_converse_stream_final_event_has_done():
         return_value=httpx.Response(200, content=ndjson)
     )
     async with AsyncSuperMeClient(api_key="tok") as client:
-        events = [ev async for ev in client.group_converse_stream(["alice", "bob"], topic="test")]
+        events = [
+            ev
+            async for ev in client.group_converse_stream(["alice", "bob"], topic="test")
+        ]
 
     done_event = events[-1]
     assert done_event.get("_done") is True
@@ -334,5 +344,3 @@ async def test_live_get_agentic_resume(async_live_client):
 async def test_live_stream_interview_list(async_live_client):
     interviews = await async_live_client.list_my_interviews()
     assert isinstance(interviews, list)
-
-

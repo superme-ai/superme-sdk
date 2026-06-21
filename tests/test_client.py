@@ -390,8 +390,18 @@ MCP_BASE_PROFILES = "https://mcp.superme.ai"
 FIND_USERS_RESULT = {
     "question": "product-led growth",
     "experts": [
-        {"user_id": "u1", "user_name": "alice", "why_selected": "expert", "relevance_score": 0.9},
-        {"user_id": "u2", "user_name": "bob", "why_selected": "expert", "relevance_score": 0.7},
+        {
+            "user_id": "u1",
+            "user_name": "alice",
+            "why_selected": "expert",
+            "relevance_score": 0.9,
+        },
+        {
+            "user_id": "u2",
+            "user_name": "bob",
+            "why_selected": "expert",
+            "relevance_score": 0.7,
+        },
     ],
 }
 
@@ -475,7 +485,11 @@ _FIND_PROFILES_MULTI = {
     "resolved_user_ids": ["u1"],
     "unresolved": [],
 }
-_PERSPECTIVES = {"perspectives": [{"expert_name": "Ludo", "perspective": "..."}], "synthesis": "..."}
+_PERSPECTIVES = {
+    "perspectives": [{"expert_name": "Ludo", "perspective": "..."}],
+    "synthesis": "...",
+}
+
 
 def _mcp_rpc_ok(payload: dict) -> httpx.Response:
     return httpx.Response(
@@ -500,7 +514,9 @@ def test_get_profile_self_calls_get_my_profile():
 
 @respx.mock
 def test_get_profile_with_identifier_calls_find_profiles():
-    route = respx.post(f"{MCP_BASE}/mcp/").mock(return_value=_mcp_rpc_ok(_FIND_PROFILES_SINGLE))
+    route = respx.post(f"{MCP_BASE}/mcp/").mock(
+        return_value=_mcp_rpc_ok(_FIND_PROFILES_SINGLE)
+    )
     with SuperMeClient(api_key=FAKE_JWT_PROFILES) as client:
         result = client.get_profile("ludo")
     body = json.loads(route.calls[0].request.content)
@@ -521,7 +537,9 @@ def test_get_profile_with_identifier_no_match_returns_empty():
 
 @respx.mock
 def test_find_user_by_name_calls_find_profiles():
-    route = respx.post(f"{MCP_BASE}/mcp/").mock(return_value=_mcp_rpc_ok(_FIND_PROFILES_SINGLE))
+    route = respx.post(f"{MCP_BASE}/mcp/").mock(
+        return_value=_mcp_rpc_ok(_FIND_PROFILES_SINGLE)
+    )
     with SuperMeClient(api_key=FAKE_JWT_PROFILES) as client:
         result = client.find_user_by_name("ludo")
     body = json.loads(route.calls[0].request.content)
@@ -532,7 +550,9 @@ def test_find_user_by_name_calls_find_profiles():
 
 @respx.mock
 def test_find_users_by_names_calls_find_profiles_with_list():
-    route = respx.post(f"{MCP_BASE}/mcp/").mock(return_value=_mcp_rpc_ok(_FIND_PROFILES_MULTI))
+    route = respx.post(f"{MCP_BASE}/mcp/").mock(
+        return_value=_mcp_rpc_ok(_FIND_PROFILES_MULTI)
+    )
     with SuperMeClient(api_key=FAKE_JWT_PROFILES) as client:
         result = client.find_users_by_names(["ludo", "alice"])
     body = json.loads(route.calls[0].request.content)
