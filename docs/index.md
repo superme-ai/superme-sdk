@@ -36,4 +36,4 @@ print(result["answer"])
 - [Models](api/models.md) — response data models (`StreamEvent`, `ChatCompletion`, …)
 - [Auth](api/auth.md) — token helpers
 - [Chat](api/chat.md) — OpenAI-compatible chat interface
-- **Services** — [Profiles](api/services/profiles.md), [Conversations](api/services/conversations.md), [Groups](api/services/groups.md), [Companies & Roles](api/services/companies.md), [Interviews](api/services/interviews.md), [Content](api/services/content.md), [Social](api/services/social.md)
+- **Services** — [Profiles](api/services/profiles.md), [Conversations](api/services/conversations.md), [Groups](api/services/groups.md), [Interviews](api/services/interviews.md), [Content](api/services/content.md), [Library](api/services/library.md), [Social](api/services/social.md), [Provisioning](api/services/provision.md)
