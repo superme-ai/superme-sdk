@@ -181,10 +181,11 @@ make test-live
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `provision_create(community_id, *, name, linkedin_url, contact_email, notes, socials, external_urls)` | `dict` | Provision a single community member. Returns a `provision` record with `user_id`, `token`, `claim_url`, and `status`. |
+| `provision_create(community_id, *, name, linkedin_url, contact_email, notes, socials, external_urls)` | `ProvisionCreateResponse` | Provision a single community member. Returns a `provision` record with `user_id`, `token`, `claim_url`, and `status`. |
 | `provision_create_batch(community_id, profiles)` | `list[dict]` | Provision multiple members concurrently (up to 10 in flight). Results match the order of `profiles`; failed items have an `"error"` key instead of `"provision"`. |
-| `provision_send_invites(community_id, user_ids)` | `dict` | Send invite emails to provisioned members. Returns `sent`, `skipped`, and `failed` lists. |
-| `provision_list(community_id)` | `dict` | List all provisions for a community. Returns `provisions` and `count`. |
+| `provision_send_invites(community_id, user_ids)` | `ProvisionInviteResponse` | Send invite emails to provisioned members. Returns `sent`, `skipped`, and `failed` lists. |
+| `provision_list(community_id)` | `ProvisionListResponse` | List all provisions for a community. Returns `provisions` and `count`. |
+| `provision_get(community_id, user_id)` | `ProvisionRecord` | Fetch a single provisioned member by user ID. |
 
 #### OpenAI-compatible interface
 
