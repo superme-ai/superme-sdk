@@ -25,7 +25,7 @@ class WorkgroupsMixin:
             ``description``, ``members`` (list of ``{user_id, name}``), and
             ``created_at`` / ``updated_at`` / ``last_used_at`` timestamps.
         """
-        result = self._mcp_tool_call("list_workgroups", {})
+        result = self._mcp_tool_call("workgroup_list", {})
         if isinstance(result, dict):
             workgroups = result.get("workgroups", [])
             return workgroups if isinstance(workgroups, list) else []
@@ -44,7 +44,7 @@ class WorkgroupsMixin:
         Returns:
             Workgroup dict, or ``None`` if no workgroup with that ID exists.
         """
-        result = self._mcp_tool_call("get_workgroup", {"workgroup_id": workgroup_id})
+        result = self._mcp_tool_call("workgroup_read", {"workgroup_id": workgroup_id})
         if isinstance(result, dict) and "error" not in result:
             return result
         return None
@@ -88,7 +88,7 @@ class WorkgroupsMixin:
             args["description"] = description
         if members is not None:
             args["members"] = members
-        return self._mcp_tool_call("create_workgroup", args)
+        return self._mcp_tool_call("workgroup_create", args)
 
     def update_workgroup(
         self,
@@ -126,4 +126,4 @@ class WorkgroupsMixin:
             args["description"] = description
         if members is not None:
             args["members"] = members
-        return self._mcp_tool_call("update_workgroup", args)
+        return self._mcp_tool_call("workgroup_edit", args)

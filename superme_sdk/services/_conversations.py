@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import Any, Generator, Optional
-
-from superme_sdk.models import StreamEvent
+from typing import Any, Optional
 
 
 class ConversationsMixin:
@@ -170,7 +168,7 @@ class ConversationsMixin:
         Returns:
             List of conversation summary dicts.
         """
-        result = self._mcp_tool_call("list_conversations", {"limit": limit})
+        result = self._mcp_tool_call("conversation_list", {"limit": limit})
         if isinstance(result, list):
             return result
         conversations = result.get("conversations", [])
@@ -193,30 +191,8 @@ class ConversationsMixin:
             Conversation dict with metadata and message history.
         """
         return self._mcp_tool_call(
-            "get_conversation", {"conversation_id": conversation_id}
+            "conversation_read", {"conversation_id": conversation_id}
         )
-
-    def ask_my_agent_stream(
-        self,
-        question: str,
-        *,
-        conversation_id: Optional[str] = None,
-    ) -> Generator[StreamEvent, None, None]:
-        """Stream a response from your SuperMe AI agent.
-
-        Example:
-            ```python
-            for event in client.ask_my_agent_stream("Summarise my last 3 posts"):
-                if event.done:
-                    print("conversation_id:", event.conversation_id)
-                else:
-                    print(event.text, end="", flush=True)
-            ```
-
-        Yields :class:`~superme_sdk.models.StreamEvent` objects.
-        The final event has ``done=True`` and ``conversation_id`` set.
-        """
-        yield from self._stream_direct(question, conversation_id=conversation_id)
 
     def ask_my_agent(
         self,

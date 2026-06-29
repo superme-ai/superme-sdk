@@ -2,34 +2,27 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 
 class ProfilesMixin:
-    def get_profile(self, identifier: Optional[str] = None) -> dict:
+    def get_profile(self, identifier: str) -> dict:
         """Return public profile info for a user.
 
         Example:
             ```python
-            me = client.get_profile()
             profile = client.get_profile("ludo")
             print(profile["name"], profile["user_id"])
             ```
 
         Args:
-            identifier: User ID, username, or full name. Omit for your own profile.
+            identifier: User ID, username, or full name.
 
         Returns:
-            When called without ``identifier`` (own profile): dict with ``name``,
-            ``title``, ``location``, ``avatar_image``, ``connected_accounts``,
-            ``connected_blogs``.
-            When called with ``identifier``: flat profile dict with ``user_id``,
-            ``in_network``, ``name``, and other public fields.
-            Returns ``{}`` if no match is found.
+            Flat profile dict with ``user_id``, ``in_network``, ``name``, and
+            other public fields. Returns ``{}`` if no match is found.
         """
-        if not identifier:
-            return self._mcp_tool_call("get_my_profile", {})
-        result = self._mcp_tool_call("find_profiles", {"identifier": identifier})
+        result = self._mcp_tool_call("user_profile_search", {"identifier": identifier})
         users = result.get("users", []) if isinstance(result, dict) else []
         return users[0] if users else {}
 
@@ -51,7 +44,7 @@ class ProfilesMixin:
             Dict with ``users`` (list of matches) and ``workgroups`` keys.
         """
         return self._mcp_tool_call(
-            "find_profiles", {"identifier": name, "limit": limit}
+            "user_profile_search", {"identifier": name, "limit": limit}
         )
 
     def find_users_by_names(
@@ -73,7 +66,7 @@ class ProfilesMixin:
             Dict with ``results``, ``resolved_user_ids``, and ``unresolved`` keys.
         """
         return self._mcp_tool_call(
-            "find_profiles",
+            "user_profile_search",
             {"identifier": names, "limit": limit_per_name},
         )
 
@@ -105,23 +98,4 @@ class ProfilesMixin:
         args: dict[str, Any] = {"question": question, "max_results": max_results}
         if excluded_user_ids is not None:
             args["excluded_user_ids"] = excluded_user_ids
-        return self._mcp_tool_call("find_experts", args)
-
-    def perspective_search(self, question: str) -> dict:
-        """Get perspectives from multiple experts on a topic.
-
-        Example:
-            ```python
-            result = client.perspective_search("What is product-market fit?")
-            print(result["synthesis"])
-            for p in result["perspectives"]:
-                print(p["expert_name"], p["perspective"])
-            ```
-
-        Args:
-            question: A topic or question to get expert takes on.
-
-        Returns:
-            Dict with ``perspectives`` list and ``synthesis`` string.
-        """
-        return self._mcp_tool_call("search_perspective", {"question": question})
+        return self._mcp_tool_call("user_expert_search", args)

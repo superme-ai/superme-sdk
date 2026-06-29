@@ -23,17 +23,14 @@ print(answer)
 
 # look up a profile
 profile = client.get_profile("ludo")
-
-# get perspectives from multiple people at once
-result = client.perspective_search("What is the best growth channel for B2B?")
-print(result["answer"])
+print(profile["name"])
 
 ```
 
 ## API Reference
 
 - [Client](api/client.md) — main `SuperMeClient` class
-- [Models](api/models.md) — response data models (`StreamEvent`, `ChatCompletion`, …)
+- [Models](api/models.md) — response data models (`ChatCompletion`, …)
 - [Auth](api/auth.md) — token helpers
 - [Chat](api/chat.md) — OpenAI-compatible chat interface
-- **Services** — [Profiles](api/services/profiles.md), [Conversations](api/services/conversations.md), [Groups](api/services/groups.md), [Interviews](api/services/interviews.md), [Content](api/services/content.md), [Library](api/services/library.md), [Social](api/services/social.md), [Provisioning](api/services/provision.md)
+- **Services** — [Profiles](api/services/profiles.md), [Conversations](api/services/conversations.md), [Interviews](api/services/interviews.md), [Library](api/services/library.md), [Social](api/services/social.md), [Provisioning](api/services/provision.md)

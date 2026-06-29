@@ -155,8 +155,7 @@ class LibraryMixin:
         """Check the ingestion status of the authenticated user's library.
 
         Returns a summary of how many items are pending, processing, done,
-        or failed. Useful to poll after :meth:`add_external_content` to know
-        when URLs finish processing.
+        or failed. Useful to poll while submitted URLs finish processing.
 
         Example:
             ```python

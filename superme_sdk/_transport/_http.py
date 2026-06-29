@@ -4,13 +4,11 @@ from __future__ import annotations
 
 import base64
 import json
-from typing import Any, Generator, Optional
+from typing import Any
 
 import httpx
 
-from ._ndjson import iter_ndjson_lines
 from ..exceptions import APIError, AuthError, MCPError, NotFoundError, RateLimitError
-from ..models import StreamEvent
 
 
 def _decode_jwt(token: str) -> dict[str, Any]:
@@ -33,57 +31,6 @@ class HttpMixin:
     Expects the following attributes set by ``SuperMeClient.__init__``:
         self._http, self._rest_http, self._rpc_id, self.api_key, self.base_url
     """
-
-    def _stream_direct(
-        self,
-        question: str,
-        *,
-        conversation_id: Optional[str] = None,
-    ) -> Generator[StreamEvent, None, None]:
-        """Stream via the direct /mcp/chat/stream endpoint.
-
-        Yields :class:`~superme_sdk.models.StreamEvent` objects.
-        The final event has ``done=True`` and ``conversation_id`` populated.
-        """
-        payload: dict[str, Any] = {"question": question}
-        if conversation_id:
-            payload["conversation_id"] = conversation_id
-
-        token_data = _decode_jwt(self.api_key)
-        if token_data.get("user_id"):
-            payload["user_id"] = token_data["user_id"]
-
-        conv_id_out: Optional[str] = conversation_id
-
-        # Disable compression so chunks arrive unbuffered
-        with self._http.stream(
-            "POST",
-            "/mcp/chat/stream",
-            json=payload,
-            headers={"Accept-Encoding": "identity"},
-        ) as resp:
-            if not resp.is_success:
-                resp.read()
-            self._check_rest_response(resp)
-
-            for line in iter_ndjson_lines(resp):
-                try:
-                    obj = json.loads(line)
-                except (json.JSONDecodeError, ValueError):
-                    yield StreamEvent(text=line)
-                    continue
-                if not isinstance(obj, dict):
-                    continue
-                msg_type = obj.get("type", "")
-                metadata = obj.get("metadata") or {}
-                if msg_type == "session_info":
-                    conv_id_out = metadata.get("session_id") or conv_id_out
-                elif msg_type == "content":
-                    text = obj.get("content", "")
-                    if text:
-                        yield StreamEvent(text=text)
-
-        yield StreamEvent(done=True, conversation_id=conv_id_out)
 
     def _next_rpc_id(self) -> int:
         self._rpc_id += 1

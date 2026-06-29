@@ -20,13 +20,8 @@ REST_BASE = "https://www.superme.ai"
 
 
 def _sse(*objs) -> bytes:
-    """Encode dicts as ``data: <json>\\n\\n`` SSE lines (interviews)."""
+    """Encode dicts as ``data: <json>\\n\\n`` SSE lines."""
     return "".join(f"data: {json.dumps(o)}\n\n" for o in objs).encode()
-
-
-def _ndjson(*objs) -> bytes:
-    """Encode dicts as bare NDJSON lines (agent + group_converse endpoints)."""
-    return "".join(f"{json.dumps(o)}\n" for o in objs).encode()
 
 
 def _mcp_tool_response(result_dict: dict) -> dict:
@@ -60,75 +55,6 @@ async def test_async_client_context_manager():
 
 
 # ---------------------------------------------------------------------------
-# ask_my_agent_stream
-# ---------------------------------------------------------------------------
-
-
-@respx.mock
-async def test_ask_my_agent_stream_yields_text_events():
-    ndjson = _ndjson(
-        {"type": "content", "content": "Hello "},
-        {"type": "content", "content": "world"},
-        {"type": "done"},
-    )
-    respx.post(f"{MCP_BASE}/mcp/chat/stream").mock(
-        return_value=httpx.Response(200, content=ndjson)
-    )
-    async with AsyncSuperMeClient(api_key="tok") as client:
-        events = [ev async for ev in client.ask_my_agent_stream("hi")]
-
-    text_events = [e for e in events if not e.done]
-    assert len(text_events) == 2
-    assert text_events[0].text == "Hello "
-    assert text_events[1].text == "world"
-
-
-@respx.mock
-async def test_ask_my_agent_stream_final_event_has_done_true():
-    ndjson = _ndjson(
-        {"type": "session_info", "metadata": {"session_id": "conv_xyz"}},
-        {"type": "content", "content": "Hi"},
-        {"type": "done"},
-    )
-    respx.post(f"{MCP_BASE}/mcp/chat/stream").mock(
-        return_value=httpx.Response(200, content=ndjson)
-    )
-    async with AsyncSuperMeClient(api_key="tok") as client:
-        events = [ev async for ev in client.ask_my_agent_stream("hi")]
-
-    assert events[-1].done is True
-
-
-@respx.mock
-async def test_ask_my_agent_stream_propagates_conversation_id():
-    ndjson = _ndjson(
-        {"type": "session_info", "metadata": {"session_id": "conv_abc"}},
-        {"type": "content", "content": "Hi"},
-        {"type": "done"},
-    )
-    respx.post(f"{MCP_BASE}/mcp/chat/stream").mock(
-        return_value=httpx.Response(200, content=ndjson)
-    )
-    async with AsyncSuperMeClient(api_key="tok") as client:
-        events = [ev async for ev in client.ask_my_agent_stream("hi")]
-
-    assert events[-1].conversation_id == "conv_abc"
-
-
-@respx.mock
-async def test_ask_my_agent_stream_passes_conversation_id_in_payload():
-    route = respx.post(f"{MCP_BASE}/mcp/chat/stream").mock(
-        return_value=httpx.Response(200, content=_ndjson({"type": "done"}))
-    )
-    async with AsyncSuperMeClient(api_key="tok") as client:
-        async for _ in client.ask_my_agent_stream("hi", conversation_id="conv_existing"):
-            pass
-
-    body = json.loads(route.calls[0].request.content)
-    assert body["conversation_id"] == "conv_existing"
-
-
-# ---------------------------------------------------------------------------
 # ask_my_agent (non-streaming)
 # ---------------------------------------------------------------------------
 
@@ -146,47 +72,6 @@ async def test_ask_my_agent_returns_dict():
     async with AsyncSuperMeClient(api_key="tok") as client:
         result = await client.ask_my_agent("What is PMF?")
     assert result["response"] == "Great question!"
-
-
-# ---------------------------------------------------------------------------
-# group_converse_stream
-# ---------------------------------------------------------------------------
-
-
-@respx.mock
-async def test_group_converse_stream_yields_perspectives():
-    ndjson = _ndjson(
-        {"type": "perspective", "user_name": "Alice", "content": "My view..."},
-        {"type": "perspective", "user_name": "Bob", "content": "I think..."},
-        {"type": "done", "conversation_id": "gconv_1"},
-    )
-    respx.post(f"{MCP_BASE}/mcp/chat/stream/group_converse").mock(
-        return_value=httpx.Response(200, content=ndjson)
-    )
-    async with AsyncSuperMeClient(api_key="tok") as client:
-        events = [ev async for ev in client.group_converse_stream(["alice", "bob"], topic="AI future")]
-
-    perspectives = [e for e in events if e.get("type") == "perspective"]
-    assert len(perspectives) == 2
-    assert perspectives[0]["user_name"] == "Alice"
-    assert perspectives[1]["user_name"] == "Bob"
-
-
-@respx.mock
-async def test_group_converse_stream_final_event_has_done():
-    ndjson = _ndjson(
-        {"type": "perspective", "user_name": "Alice", "content": "My view..."},
-        {"type": "done", "conversation_id": "gconv_2"},
-    )
-    respx.post(f"{MCP_BASE}/mcp/chat/stream/group_converse").mock(
-        return_value=httpx.Response(200, content=ndjson)
-    )
-    async with AsyncSuperMeClient(api_key="tok") as client:
-        events = [ev async for ev in client.group_converse_stream(["alice", "bob"], topic="test")]
-
-    done_event = events[-1]
-    assert done_event.get("_done") is True
-    assert done_event.get("conversation_id") == "gconv_2"
 
 
 # ---------------------------------------------------------------------------
@@ -307,20 +192,6 @@ async def test_async_client_mcp_error_raises():
 # ---------------------------------------------------------------------------
 # live tests
 # ---------------------------------------------------------------------------
-
-
-@pytest.mark.live
-async def test_live_ask_my_agent_stream(async_live_client):
-    events = []
-    async for ev in async_live_client.ask_my_agent_stream("Say 'hello' in one word"):
-        events.append(ev)
-
-    text = "".join(e.text for e in events if not e.done)
-    assert len(text) > 0, "Expected non-empty streamed text"
-
-    done_events = [e for e in events if e.done]
-    assert len(done_events) == 1
-    assert done_events[0].conversation_id is not None
 
 
 @pytest.mark.live

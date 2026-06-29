@@ -11,7 +11,6 @@ from .exceptions import (
     MCPError,
 )
 from .models import (
-    StreamEvent,
     StageInfo,
     InterviewStatus,
     ProvisionRecord,
@@ -22,7 +21,7 @@ from .models import (
     ProvisionInviteResponse,
 )
 
-__version__ = "0.7.0"
+__version__ = "0.8.0"
 __all__ = [
     "SuperMeClient",
     "AsyncSuperMeClient",
@@ -36,7 +35,6 @@ __all__ = [
     "NotFoundError",
     "APIError",
     "MCPError",
-    "StreamEvent",
     "StageInfo",
     "InterviewStatus",
     "ProvisionRecord",

@@ -129,7 +129,6 @@ make test-live
 | `ask(question, username, *, conversation_id, max_tokens, incognito)` | `str` | Ask a question to a user's SuperMe agent. Returns the answer text. |
 | ~~`ask_with_history(messages, username, *, conversation_id, max_tokens, incognito)`~~ | `(str, str\|None)` | **Deprecated** — kept for backward compatibility. Use `ask` with `conversation_id` instead. Only the last user message is sent; the rest of the list is ignored. |
 | `ask_my_agent(question, *, conversation_id)` | `dict` | Talk to your own SuperMe AI agent. Returns `{"response": ..., "conversation_id": ...}`. |
-| `ask_my_agent_stream(question, *, conversation_id)` | `generator` | Stream your own agent's response. Yields string chunks; final item is `{"conversation_id": ..., "_done": True}`. |
 | `list_conversations(*, limit)` | `list[dict]` | List your most recent conversations. |
 | `get_conversation(conversation_id)` | `dict` | Fetch a single conversation with all its messages. |
 
@@ -137,25 +136,10 @@ make test-live
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `get_profile(identifier)` | `dict` | Get a user's public profile. Omit `identifier` for your own profile. |
+| `get_profile(identifier)` | `dict` | Get a user's public profile by user ID, username, or name. |
 | `find_user_by_name(name, *, limit)` | `dict` | Search for users by name. |
 | `find_users_by_names(names, *, limit_per_name)` | `dict` | Resolve multiple names to SuperMe users in one call. |
-| `perspective_search(question)` | `dict` | Get perspectives from multiple experts on a topic. |
-
-#### Group conversations
-
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `group_converse(participants, topic, *, max_turns, conversation_id)` | `dict` | Start or continue a multi-turn group conversation between multiple users. |
-| `group_converse_stream(participants, topic, *, max_turns, conversation_id)` | `generator` | Stream a group conversation. Yields per-perspective dicts; final item has `"_done": True`. |
-
-#### Content
-
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `add_internal_content(input, *, extended_content, past_instructions)` | `dict` | Save notes or knowledge to your personal library. |
-| `update_internal_content(learning_id, *, user_input, extended_content, past_instructions)` | `dict` | Update an existing note. |
-| `add_external_content(urls, *, reference, instant_recrawl)` | `dict` | Submit URLs to be crawled and added to your knowledge base. |
+| `find_users_on_topic(question, *, max_results, excluded_user_ids)` | `dict` | Find SuperMe users who are experts on a topic. |
 
 #### Social accounts
 
@@ -220,7 +204,7 @@ print(response.metadata["conversation_id"])
 tools = client.mcp_list_tools()
 
 # Call a tool directly
-profiles = client.mcp_tool_call("find_profiles", {"identifier": "ludo"})
+profiles = client.mcp_tool_call("user_profile_search", {"identifier": "ludo"})
 
 # Raw JSON-RPC
 result = client.raw_request("tools/list")
