@@ -48,6 +48,63 @@ class ChatCompletion:
         self.metadata: Optional[dict] = data.get("metadata")
 
 
+class ProvisionRecord(TypedDict, total=False):
+    """A single provisioned member record."""
+
+    user_id: str
+    token: str
+    name: str
+    linkedin_url: Optional[str]
+    contact_email: Optional[str]
+    notes: Optional[str]
+    claim_url: str
+    status: str
+    created_at: Optional[str]
+    claimed_at: Optional[str]
+    invited_at: Optional[str]
+    socials: dict[str, str]
+    doc_count: int
+    audited: bool
+    audited_at: Optional[str]
+    deletion_requested_at: Optional[str]
+    deletion_reason: Optional[str]
+    reused: bool
+
+
+class ProvisionProfile(TypedDict, total=False):
+    """Input profile for :meth:`~superme_sdk.SuperMeClient.provision_create_batch`."""
+
+    name: str
+    linkedin_url: str
+    contact_email: str
+    notes: str
+    socials: dict[str, str]
+    external_urls: list[str]
+
+
+class ProvisionInviteOutcome(TypedDict, total=False):
+    user_id: str
+    reason: str
+
+
+class ProvisionCreateResponse(TypedDict, total=False):
+    success: bool
+    provision: ProvisionRecord
+
+
+class ProvisionListResponse(TypedDict, total=False):
+    success: bool
+    provisions: list[ProvisionRecord]
+    count: int
+
+
+class ProvisionInviteResponse(TypedDict, total=False):
+    success: bool
+    sent: list[str]
+    skipped: list[ProvisionInviteOutcome]
+    failed: list[ProvisionInviteOutcome]
+
+
 class StageInfo(TypedDict, total=False):
     """A single stage from the interview status API."""
 
