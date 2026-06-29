@@ -10,7 +10,17 @@ from .exceptions import (
     APIError,
     MCPError,
 )
-from .models import StreamEvent, StageInfo, InterviewStatus
+from .models import (
+    StreamEvent,
+    StageInfo,
+    InterviewStatus,
+    ProvisionRecord,
+    ProvisionProfile,
+    ProvisionInviteOutcome,
+    ProvisionCreateResponse,
+    ProvisionListResponse,
+    ProvisionInviteResponse,
+)
 
 __version__ = "0.6.0"
 __all__ = [
@@ -29,4 +39,10 @@ __all__ = [
     "StreamEvent",
     "StageInfo",
     "InterviewStatus",
+    "ProvisionRecord",
+    "ProvisionProfile",
+    "ProvisionInviteOutcome",
+    "ProvisionCreateResponse",
+    "ProvisionListResponse",
+    "ProvisionInviteResponse",
 ]

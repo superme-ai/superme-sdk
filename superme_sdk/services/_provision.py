@@ -7,6 +7,14 @@ from typing import Any, Optional
 
 import httpx
 
+from superme_sdk.models import (
+    ProvisionCreateResponse,
+    ProvisionInviteResponse,
+    ProvisionListResponse,
+    ProvisionProfile,
+    ProvisionRecord,
+)
+
 
 _BATCH_CONCURRENCY = 10
 
@@ -47,7 +55,7 @@ class ProvisionMixin:
         notes: Optional[str] = None,
         socials: Optional[dict[str, str]] = None,
         external_urls: Optional[list[str]] = None,
-    ) -> dict[str, Any]:
+    ) -> ProvisionCreateResponse:
         """Provision a single community member.
 
         Example:
@@ -72,8 +80,7 @@ class ProvisionMixin:
             external_urls: URLs to import into the person's knowledge base.
 
         Returns:
-            Dict with ``provision`` record including ``user_id``, ``token``,
-            ``claim_url``, and ``status``.
+            :class:`~superme_sdk.ProvisionCreateResponse` with the provisioned member record.
         """
         body = _provision_body(
             community_id,
@@ -91,7 +98,7 @@ class ProvisionMixin:
     def provision_create_batch(
         self,
         community_id: str,
-        profiles: list[dict[str, Any]],
+        profiles: list[ProvisionProfile],
     ) -> list[dict[str, Any]]:
         """Provision multiple community members concurrently.
 
@@ -170,7 +177,7 @@ class ProvisionMixin:
         self,
         community_id: str,
         user_ids: list[str],
-    ) -> dict[str, Any]:
+    ) -> ProvisionInviteResponse:
         """Send invite emails to provisioned members.
 
         Example:
@@ -187,7 +194,7 @@ class ProvisionMixin:
             user_ids: List of provisioned user IDs to send invites to.
 
         Returns:
-            Dict with ``sent``, ``skipped``, and ``failed`` lists.
+            :class:`~superme_sdk.ProvisionInviteResponse` with ``sent``, ``skipped``, and ``failed`` lists.
         """
         resp = self._rest_http.post(
             f"/api/v3/provision/{community_id}/invite",
@@ -196,7 +203,7 @@ class ProvisionMixin:
         self._check_rest_response(resp)
         return resp.json()
 
-    def provision_list(self, community_id: str) -> dict[str, Any]:
+    def provision_list(self, community_id: str) -> ProvisionListResponse:
         """List all provisions for a community.
 
         Example:
@@ -210,7 +217,7 @@ class ProvisionMixin:
             community_id: The community to list provisions for.
 
         Returns:
-            Dict with ``provisions`` list and ``count``.
+            :class:`~superme_sdk.ProvisionListResponse` with ``provisions`` list and ``count``.
         """
         resp = self._rest_http.get(
             f"/api/v3/provision/{community_id}",
@@ -218,3 +225,23 @@ class ProvisionMixin:
         )
         self._check_rest_response(resp)
         return resp.json()
+
+    def provision_get(self, community_id: str, user_id: str) -> ProvisionRecord:
+        """Fetch a single provisioned member by user ID.
+
+        Example:
+            ```python
+            record = client.provision_get("community_abc", "user_123")
+            print(record["status"], record["claim_url"])
+            ```
+
+        Args:
+            community_id: The community that owns the provision.
+            user_id: The provisioned user's ID.
+
+        Returns:
+            :class:`~superme_sdk.ProvisionRecord` for the given user.
+        """
+        resp = self._rest_http.get(f"/api/v3/provision/{community_id}/{user_id}")
+        self._check_rest_response(resp)
+        return resp.json()["provision"]
