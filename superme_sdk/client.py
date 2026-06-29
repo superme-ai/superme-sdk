@@ -10,9 +10,7 @@ from ._transport._chat_proxy import Chat, Completions
 from ._transport._http import HttpMixin, _decode_jwt
 from .aio._http import AsyncHttpMixin
 from .services._agentic_resume import AgenticResumeMixin
-from .services._content import ContentMixin
 from .services._conversations import ConversationsMixin
-from .services._groups import GroupsMixin
 from .services._interviews import InterviewsMixin
 from .services._library import LibraryMixin
 from .services._profiles import ProfilesMixin
@@ -21,7 +19,6 @@ from .services._social import SocialMixin
 from .services._workgroups import WorkgroupsMixin
 from .services.aio._agentic_resume import AsyncAgenticResumeMixin
 from .services.aio._conversations import AsyncConversationsMixin
-from .services.aio._groups import AsyncGroupsMixin
 from .services.aio._interviews import AsyncInterviewsMixin
 from .services.aio._provision import AsyncProvisionMixin
 from .services.aio._workgroups import AsyncWorkgroupsMixin
@@ -84,10 +81,8 @@ class SuperMeClient(
     AgenticResumeMixin,
     ConversationsMixin,
     ProfilesMixin,
-    GroupsMixin,
     InterviewsMixin,
     LibraryMixin,
-    ContentMixin,
     SocialMixin,
     WorkgroupsMixin,
     ProvisionMixin,
@@ -185,7 +180,6 @@ class SuperMeClient(
 class AsyncSuperMeClient(
     AsyncAgenticResumeMixin,
     AsyncConversationsMixin,
-    AsyncGroupsMixin,
     AsyncInterviewsMixin,
     AsyncWorkgroupsMixin,
     AsyncProvisionMixin,
@@ -201,11 +195,8 @@ class AsyncSuperMeClient(
     Example::
 
         async with AsyncSuperMeClient(api_key="your-superme-api-key") as client:
-            async for event in client.ask_my_agent_stream("Summarise my last 3 posts"):
-                if event.done:
-                    print("done, conv_id:", event.conversation_id)
-                else:
-                    print(event.text, end="", flush=True)
+            result = await client.ask_my_agent("Summarise my last 3 posts")
+            print(result["response"])
 
             async for event in client.stream_interview("interview_abc123"):
                 print(event)

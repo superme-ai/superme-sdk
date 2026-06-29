@@ -15,7 +15,7 @@ class AsyncWorkgroupsMixin:
 
     async def list_workgroups(self) -> list[dict]:
         """List your workgroups, most recently used first (async)."""
-        result = await self._async_mcp_tool_call("list_workgroups", {})
+        result = await self._async_mcp_tool_call("workgroup_list", {})
         if isinstance(result, dict):
             groups = result.get("workgroups", [])
             return groups if isinstance(groups, list) else []
@@ -24,7 +24,7 @@ class AsyncWorkgroupsMixin:
     async def get_workgroup(self, workgroup_id: str) -> Optional[dict]:
         """Get a single workgroup by ID (async)."""
         result = await self._async_mcp_tool_call(
-            "get_workgroup", {"workgroup_id": workgroup_id}
+            "workgroup_read", {"workgroup_id": workgroup_id}
         )
         if isinstance(result, dict) and "error" not in result:
             return result
@@ -44,7 +44,7 @@ class AsyncWorkgroupsMixin:
             args["description"] = description
         if members is not None:
             args["members"] = members
-        return await self._async_mcp_tool_call("create_workgroup", args)
+        return await self._async_mcp_tool_call("workgroup_create", args)
 
     async def update_workgroup(
         self,
@@ -68,4 +68,4 @@ class AsyncWorkgroupsMixin:
             args["description"] = description
         if members is not None:
             args["members"] = members
-        return await self._async_mcp_tool_call("update_workgroup", args)
+        return await self._async_mcp_tool_call("workgroup_edit", args)

@@ -51,13 +51,8 @@ def main():
     result = client.mcp_tool_call("find_profiles", {"identifier": "ludo"})
     print(f"  Result: {str(result)[:200]}")
 
-    # 4. MCP tool call - get my profile
-    print("\n4. Get my profile:")
-    profile = client.mcp_tool_call("get_my_profile", {})
-    print(f"  Profile: {str(profile)[:200]}")
-
-    # 5. List conversations
-    print("\n5. List conversations:")
+    # 4. List conversations
+    print("\n4. List conversations:")
     conversations = client.mcp_tool_call("list_conversations", {"username": "ludo"})
     print(f"  Conversations: {conversations[:200]}")
 

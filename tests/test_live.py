@@ -26,14 +26,6 @@ def test_live_get_profile_by_username(live_client, live_username):
 
 
 @pytest.mark.live
-def test_live_get_own_profile(live_client):
-    # get_profile() → get_my_profile → flat profile dict
-    profile = live_client.get_profile()
-    assert isinstance(profile, dict)
-    assert "name" in profile or "username" in profile or "id" in profile
-
-
-@pytest.mark.live
 def test_live_find_user_by_name(live_client, live_username):
     # find_user_by_name → find_profiles → {"users": [...], "workgroups": [...]}
     result = live_client.find_user_by_name(live_username)
@@ -56,13 +48,6 @@ def test_live_find_users_by_names(live_client, live_username):
     assert isinstance(result["results"], list)
     assert len(result["results"]) == 2
     assert len(result["resolved_user_ids"]) >= 1
-
-
-@pytest.mark.live
-def test_live_perspective_search(live_client):
-    result = live_client.perspective_search("What is product-market fit?")
-    assert isinstance(result, dict)
-    assert "perspectives" in result or "answer" in result or "status" in result
 
 
 @pytest.mark.live
@@ -124,17 +109,6 @@ def test_live_ask_my_agent(live_client):
     assert "conversation_id" in result
 
 
-@pytest.mark.live
-def test_live_ask_my_agent_stream(live_client):
-    events = list(live_client.ask_my_agent_stream("Say hello in one sentence."))
-    assert events, "no events yielded"
-    text_events = [e for e in events if e.text]
-    done_events = [e for e in events if e.done]
-    assert text_events, "no text events yielded"
-    assert len(done_events) == 1, "expected exactly one done event"
-    assert done_events[0].conversation_id is not None
-
-
 # ---------------------------------------------------------------------------
 # Low-level MCP access
 # ---------------------------------------------------------------------------
@@ -151,7 +125,7 @@ def test_live_low_level_list_tools(live_client):
 @pytest.mark.live
 def test_live_low_level_tool_call(live_client, live_username):
     result = live_client.low_level.tool_call(
-        "find_profiles", {"identifier": live_username}
+        "user_profile_search", {"identifier": live_username}
     )
     assert isinstance(result, dict)
     assert "users" in result

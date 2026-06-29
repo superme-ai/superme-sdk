@@ -81,7 +81,7 @@ def test_create_workgroup_returns_group():
     assert result == GROUP
     # Verify the tool name + arguments
     body = json.loads(route.calls[0].request.content)
-    assert body["params"]["name"] == "create_workgroup"
+    assert body["params"]["name"] == "workgroup_create"
     args = body["params"]["arguments"]
     assert args["name"] == "Growth advisory board"
     assert args["handle"] == "growth-board"

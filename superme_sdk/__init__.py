@@ -11,7 +11,6 @@ from .exceptions import (
     MCPError,
 )
 from .models import (
-    StreamEvent,
     StageInfo,
     InterviewStatus,
     ProvisionRecord,
@@ -36,7 +35,6 @@ __all__ = [
     "NotFoundError",
     "APIError",
     "MCPError",
-    "StreamEvent",
     "StageInfo",
     "InterviewStatus",
     "ProvisionRecord",

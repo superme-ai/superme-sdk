@@ -194,7 +194,7 @@ def test_mcp_tool_call():
         )
     )
     client = SuperMeClient(api_key="tok")
-    result = client.mcp_tool_call("find_profiles", {"identifier": "ludo"})
+    result = client.mcp_tool_call("user_profile_search", {"identifier": "ludo"})
     assert result["name"] == "Ludo"
     client.close()
 
@@ -275,7 +275,7 @@ def test_low_level_tool_call():
         )
     )
     client = SuperMeClient(api_key="tok")
-    result = client.low_level.tool_call("find_profiles", {"identifier": "ludo"})
+    result = client.low_level.tool_call("user_profile_search", {"identifier": "ludo"})
     assert result["name"] == "Ludo"
     client.close()
 
@@ -414,7 +414,7 @@ class TestFindUsersOnTopic:
         client.find_users_on_topic("product-led growth")
         body = json.loads(route.calls[0].request.content)
         assert body["method"] == "tools/call"
-        assert body["params"]["name"] == "find_experts"
+        assert body["params"]["name"] == "user_expert_search"
         assert body["params"]["arguments"]["question"] == "product-led growth"
         assert body["params"]["arguments"]["max_results"] == 10
         client.close()
@@ -464,8 +464,7 @@ class TestFindUsersOnTopic:
 
 
 # ---------------------------------------------------------------------------
-# Profile method unit tests (get_profile, find_user_by_name, find_users_by_names,
-# perspective_search)
+# Profile method unit tests (get_profile, find_user_by_name, find_users_by_names)
 # ---------------------------------------------------------------------------
 
 _PROFILE_FLAT = {"user_id": "u1", "name": "Ludo", "in_network": True}
@@ -475,7 +474,6 @@ _FIND_PROFILES_MULTI = {
     "resolved_user_ids": ["u1"],
     "unresolved": [],
 }
-_PERSPECTIVES = {"perspectives": [{"expert_name": "Ludo", "perspective": "..."}], "synthesis": "..."}
 
 def _mcp_rpc_ok(payload: dict) -> httpx.Response:
     return httpx.Response(
@@ -489,22 +487,12 @@ def _mcp_rpc_ok(payload: dict) -> httpx.Response:
 
 
 @respx.mock
-def test_get_profile_self_calls_get_my_profile():
-    route = respx.post(f"{MCP_BASE}/mcp/").mock(return_value=_mcp_rpc_ok(_PROFILE_FLAT))
-    with SuperMeClient(api_key=FAKE_JWT_PROFILES) as client:
-        result = client.get_profile()
-    body = json.loads(route.calls[0].request.content)
-    assert body["params"]["name"] == "get_my_profile"
-    assert result == _PROFILE_FLAT
-
-
-@respx.mock
 def test_get_profile_with_identifier_calls_find_profiles():
     route = respx.post(f"{MCP_BASE}/mcp/").mock(return_value=_mcp_rpc_ok(_FIND_PROFILES_SINGLE))
     with SuperMeClient(api_key=FAKE_JWT_PROFILES) as client:
         result = client.get_profile("ludo")
     body = json.loads(route.calls[0].request.content)
-    assert body["params"]["name"] == "find_profiles"
+    assert body["params"]["name"] == "user_profile_search"
     assert body["params"]["arguments"]["identifier"] == "ludo"
     assert result == _PROFILE_FLAT  # W1: first user extracted
 
@@ -525,7 +513,7 @@ def test_find_user_by_name_calls_find_profiles():
     with SuperMeClient(api_key=FAKE_JWT_PROFILES) as client:
         result = client.find_user_by_name("ludo")
     body = json.loads(route.calls[0].request.content)
-    assert body["params"]["name"] == "find_profiles"
+    assert body["params"]["name"] == "user_profile_search"
     assert body["params"]["arguments"]["identifier"] == "ludo"
     assert result == _FIND_PROFILES_SINGLE
 
@@ -536,87 +524,6 @@ def test_find_users_by_names_calls_find_profiles_with_list():
     with SuperMeClient(api_key=FAKE_JWT_PROFILES) as client:
         result = client.find_users_by_names(["ludo", "alice"])
     body = json.loads(route.calls[0].request.content)
-    assert body["params"]["name"] == "find_profiles"
+    assert body["params"]["name"] == "user_profile_search"
     assert body["params"]["arguments"]["identifier"] == ["ludo", "alice"]
     assert result == _FIND_PROFILES_MULTI
-
-
-@respx.mock
-def test_perspective_search_calls_search_perspective():
-    route = respx.post(f"{MCP_BASE}/mcp/").mock(return_value=_mcp_rpc_ok(_PERSPECTIVES))
-    with SuperMeClient(api_key=FAKE_JWT_PROFILES) as client:
-        result = client.perspective_search("what is PLG?")
-    body = json.loads(route.calls[0].request.content)
-    assert body["params"]["name"] == "search_perspective"
-    assert body["params"]["arguments"]["question"] == "what is PLG?"
-    assert result == _PERSPECTIVES
-
-
-# ---------------------------------------------------------------------------
-# Sync NDJSON streaming (ask_my_agent_stream, group_converse_stream)
-# ---------------------------------------------------------------------------
-
-
-def _ndjson(*objs) -> bytes:
-    """Encode dicts as bare NDJSON lines (no data: prefix) — what /mcp/chat/stream sends."""
-    return "".join(f"{json.dumps(o)}\n" for o in objs).encode()
-
-
-@respx.mock
-def test_sync_ask_my_agent_stream_yields_text_events():
-    ndjson = _ndjson(
-        {"type": "content", "content": "Hello "},
-        {"type": "content", "content": "world"},
-        {"type": "done"},
-    )
-    respx.post(f"{MCP_BASE}/mcp/chat/stream").mock(
-        return_value=httpx.Response(200, content=ndjson)
-    )
-    client = SuperMeClient(api_key="tok")
-    events = list(client.ask_my_agent_stream("hi"))
-    client.close()
-
-    text_events = [e for e in events if not e.done]
-    assert len(text_events) == 2
-    assert text_events[0].text == "Hello "
-    assert text_events[1].text == "world"
-    assert events[-1].done is True
-
-
-@respx.mock
-def test_sync_ask_my_agent_stream_propagates_conversation_id():
-    ndjson = _ndjson(
-        {"type": "session_info", "metadata": {"session_id": "conv_sync"}},
-        {"type": "content", "content": "Hi"},
-        {"type": "done"},
-    )
-    respx.post(f"{MCP_BASE}/mcp/chat/stream").mock(
-        return_value=httpx.Response(200, content=ndjson)
-    )
-    client = SuperMeClient(api_key="tok")
-    events = list(client.ask_my_agent_stream("hi"))
-    client.close()
-
-    assert events[-1].conversation_id == "conv_sync"
-
-
-@respx.mock
-def test_sync_group_converse_stream_yields_perspectives():
-    ndjson = _ndjson(
-        {"type": "perspective", "user_name": "Alice", "content": "My view..."},
-        {"type": "perspective", "user_name": "Bob", "content": "I think..."},
-        {"type": "done", "conversation_id": "gconv_s1"},
-    )
-    respx.post(f"{MCP_BASE}/mcp/chat/stream/group_converse").mock(
-        return_value=httpx.Response(200, content=ndjson)
-    )
-    client = SuperMeClient(api_key="tok")
-    events = list(client.group_converse_stream(["alice", "bob"], topic="test"))
-    client.close()
-
-    perspectives = [e for e in events if e.get("type") == "perspective"]
-    assert len(perspectives) == 2
-    assert perspectives[0]["user_name"] == "Alice"
-    done_event = events[-1]
-    assert done_event.get("_done") is True
-    assert done_event.get("conversation_id") == "gconv_s1"
