@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable
 from typing import Any, Optional
 
 _ASK_TERMINAL = {"done", "error"}
@@ -12,92 +12,95 @@ _AGENT_TERMINAL = {"turn_completed", "turn_failed", "turn_interrupted"}
 class AsyncConversationsMixin:
     """Async variants of :class:`~superme_sdk.services._conversations.ConversationsMixin`.
 
-    Streaming methods hold an open SSE connection until a terminal event. If you
-    stop early (``break``), call ``aclose()`` on the generator (or fully drain
-    it) so the connection is released promptly rather than at GC time.
+    Non-streaming calls are awaitable (``await client.ask(...)``); streaming
+    calls return an async generator (``async for chunk in client.ask(..., stream=True)``).
+    A streaming generator holds an open SSE connection until a terminal event —
+    if you stop early (``break``), call ``aclose()`` on it (or fully drain it)
+    so the connection is released promptly rather than at GC time.
     """
 
-    async def ask_my_agent(
-        self,
-        question: str,
-        *,
-        conversation_id: Optional[str] = None,
-    ) -> dict:
-        """Talk to your own SuperMe AI agent (async).
-
-        Returns:
-            Dict with ``response`` and ``conversation_id``.
-        """
-        args: dict[str, Any] = {"question": question}
-        if conversation_id:
-            args["conversation_id"] = conversation_id
-        return await self._async_mcp_tool_call("ask_my_agent", args)
-
-    async def ask_stream(
+    def ask(
         self,
         question: str,
         username: str = "ludo",
         *,
         conversation_id: Optional[str] = None,
-    ) -> AsyncIterator[dict]:
-        """Stream an answer from a user's agent via ``POST /partner/ask`` (SSE).
+        stream: bool = False,
+    ) -> Awaitable[str] | AsyncIterator[dict]:
+        """Ask a single question to a user's SuperMe agent (async).
 
         Example:
             ```python
-            async for chunk in client.ask_stream("What is PMF?", username="ludo"):
+            answer = await client.ask("What is PMF?", username="ludo")
+
+            async for chunk in client.ask("What is PMF?", username="ludo", stream=True):
                 if chunk["type"] == "content":
                     print(chunk["text"], end="", flush=True)
             ```
 
-        Yields:
-            Chunk dicts with a ``type`` key: ``content`` (``text``), ``tool``
-            (``label``), ``done`` (``conversation_id``), or ``error``
-            (``message``). Stops after ``done`` or ``error``.
+        Returns:
+            An awaitable resolving to the answer string, or — when
+            ``stream=True`` — an async generator of SSE chunk dicts (``type``:
+            ``content``/``tool``/``done``/``error``).
         """
         body: dict[str, Any] = {
             "identifier": username,
             "question": question,
-            "stream": True,
+            "stream": stream,
         }
         if conversation_id:
             body["conversation_id"] = conversation_id
-        async for chunk in self._aiter_sse(
-            self._async_partner_http,
-            "POST",
-            "/partner/ask",
-            json=body,
-            is_terminal=lambda o: o.get("type") in _ASK_TERMINAL,
-        ):
-            yield chunk
+        if stream:
+            return self._aiter_sse(
+                self._async_partner_http,
+                "POST",
+                "/partner/ask",
+                json=body,
+                is_terminal=lambda o: o.get("type") in _ASK_TERMINAL,
+            )
+        return self._ask_nonstream(body)
 
-    async def ask_my_agent_stream(
+    async def _ask_nonstream(self, body: dict) -> str:
+        resp = await self._async_partner_http.post("/partner/ask", json=body)
+        self._check_rest_response(resp)
+        data = resp.json()
+        return data.get("answer", "") if isinstance(data, dict) else ""
+
+    def ask_my_agent(
         self,
         question: str,
         *,
         conversation_id: Optional[str] = None,
-    ) -> AsyncIterator[dict]:
-        """Stream your own agent's turn via ``POST /partner/agent`` (SSE).
+        stream: bool = False,
+    ) -> Awaitable[dict] | AsyncIterator[dict]:
+        """Talk to your own SuperMe AI agent (async).
 
         Example:
             ```python
-            async for evt in client.ask_my_agent_stream("Summarise my posts"):
+            result = await client.ask_my_agent("Summarise my last 3 posts")
+
+            async for evt in client.ask_my_agent("Summarise my posts", stream=True):
                 if evt["type"] == "content":
                     print(evt["content"], end="", flush=True)
             ```
 
-        Yields:
-            Typed turn-event dicts (``turn_started``, ``content``, ``message``,
-            ``tool_call``, ``tool_result``, ``turn_completed``, ``turn_failed``,
-            ...). Stops after a terminal event.
+        Returns:
+            An awaitable resolving to a dict with ``response`` and
+            ``conversation_id``, or — when ``stream=True`` — an async generator
+            of typed turn-event dicts (stops after a terminal event).
         """
-        body: dict[str, Any] = {"question": question, "stream": True}
+        if stream:
+            body: dict[str, Any] = {"question": question, "stream": True}
+            if conversation_id:
+                body["conversation_id"] = conversation_id
+            return self._aiter_sse(
+                self._async_partner_http,
+                "POST",
+                "/partner/agent",
+                json=body,
+                is_terminal=lambda o: o.get("type") in _AGENT_TERMINAL,
+            )
+        args: dict[str, Any] = {"question": question}
         if conversation_id:
-            body["conversation_id"] = conversation_id
-        async for evt in self._aiter_sse(
-            self._async_partner_http,
-            "POST",
-            "/partner/agent",
-            json=body,
-            is_terminal=lambda o: o.get("type") in _AGENT_TERMINAL,
-        ):
-            yield evt
+            args["conversation_id"] = conversation_id
+        return self._async_mcp_tool_call("ask_my_agent", args)

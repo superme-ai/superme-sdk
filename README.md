@@ -126,13 +126,11 @@ make test-live
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `ask(question, username, *, conversation_id, max_tokens, incognito)` | `str` | Ask a question to a user's SuperMe agent. Returns the answer text. |
-| `ask_stream(question, username, *, conversation_id)` | `generator` | Stream a user's agent answer via SSE (`POST /partner/ask`). Yields chunk dicts (`content` / `tool` / `done` / `error`); stops after `done`/`error`. |
+| `ask(question, username, *, conversation_id, max_tokens, incognito, stream=False)` | `str` \| `generator` | Ask a question to a user's SuperMe agent. Returns the answer text, or — with `stream=True` — a generator of SSE chunk dicts (`content` / `tool` / `done` / `error`, via `POST /partner/ask`). `incognito`/`max_tokens` apply to non-streaming only. |
 | ~~`ask_with_history(messages, username, *, conversation_id, max_tokens, incognito)`~~ | `(str, str\|None)` | **Deprecated** — kept for backward compatibility. Use `ask` with `conversation_id` instead. Only the last user message is sent; the rest of the list is ignored. |
-| `ask_my_agent(question, *, conversation_id)` | `dict` | Talk to your own SuperMe AI agent. Returns `{"response": ..., "conversation_id": ...}`. |
-| `ask_my_agent_stream(question, *, conversation_id)` | `generator` | Stream your own agent's turn via SSE (`POST /partner/agent`). Yields typed turn-event dicts (`turn_started`, `content`, `tool_call`, `turn_completed`, ...); stops at a terminal event. |
+| `ask_my_agent(question, *, conversation_id, stream=False)` | `dict` \| `generator` | Talk to your own SuperMe AI agent. Returns `{"response": ..., "conversation_id": ...}`, or — with `stream=True` — a generator of typed turn-event dicts (`turn_started`, `content`, `tool_call`, `turn_completed`, ..., via `POST /partner/agent`). |
 
-`AsyncSuperMeClient` mirrors these: `ask_stream` / `ask_my_agent_stream` are async generators (`async for`), and `ask_my_agent`, `get_profile`, `get_user_details`, `find_user_by_name`, `find_users_by_names`, and `find_users_on_topic` are awaitable.
+`AsyncSuperMeClient` mirrors these: with `stream=True`, `ask` / `ask_my_agent` return async generators (`async for`); otherwise they are awaitable (`await`). `get_profile`, `get_user_details`, `find_user_by_name`, `find_users_by_names`, and `find_users_on_topic` are awaitable.
 
 #### Profiles & search
 
@@ -202,29 +200,29 @@ print(response.metadata["conversation_id"])
 
 ### Streaming
 
-Stream tokens as they're generated over SSE. `ask_stream` targets another
-user's agent; `ask_my_agent_stream` targets your own.
+Pass `stream=True` to stream tokens as they're generated over SSE. `ask`
+targets another user's agent; `ask_my_agent` targets your own.
 
 ```python
 # Stream a question to a user's agent
 conversation_id = None
-for chunk in client.ask_stream("What is PMF?", username="ludo"):
+for chunk in client.ask("What is PMF?", username="ludo", stream=True):
     if chunk["type"] == "content":
         print(chunk["text"], end="", flush=True)
     elif chunk["type"] == "done":
         conversation_id = chunk["conversation_id"]
 
 # Stream your own agent (richer turn events: tool calls, messages, ...)
-for evt in client.ask_my_agent_stream("Summarise my last 3 posts"):
+for evt in client.ask_my_agent("Summarise my last 3 posts", stream=True):
     if evt["type"] == "content":
         print(evt["content"], end="", flush=True)
 ```
 
-Async (`AsyncSuperMeClient`):
+Async (`AsyncSuperMeClient`) — `stream=True` returns an async generator:
 
 ```python
 async with AsyncSuperMeClient(api_key=API_KEY) as client:
-    async for chunk in client.ask_stream("What is PMF?", username="ludo"):
+    async for chunk in client.ask("What is PMF?", username="ludo", stream=True):
         if chunk["type"] == "content":
             print(chunk["text"], end="", flush=True)
 ```

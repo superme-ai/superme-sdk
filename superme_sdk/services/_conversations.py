@@ -18,9 +18,10 @@ class ConversationsMixin:
         conversation_id: Optional[str] = None,
         max_tokens: int = 1000,
         incognito: bool = False,
+        stream: bool = False,
         **kwargs: Any,
-    ) -> str:
-        """Ask a single question.
+    ) -> str | Iterator[dict]:
+        """Ask a single question to a user's SuperMe agent.
 
         Example:
             ```python
@@ -29,18 +30,43 @@ class ConversationsMixin:
 
             # anonymously
             answer = client.ask("What is PMF?", username="ludo", incognito=True)
+
+            # streaming (yields chunk dicts over SSE)
+            for chunk in client.ask("What is PMF?", username="ludo", stream=True):
+                if chunk["type"] == "content":
+                    print(chunk["text"], end="", flush=True)
             ```
 
         Args:
             question: The question to ask.
-            username: Target SuperMe username.
+            username: Target SuperMe username or user_id.
             conversation_id: Continue an existing conversation.
-            max_tokens: Max response tokens.
-            incognito: Ask anonymously.
+            max_tokens: Max response tokens (non-streaming only).
+            incognito: Ask anonymously (non-streaming only).
+            stream: If True, return a generator of SSE chunk dicts instead of
+                the answer string.
 
         Returns:
-            Answer text.
+            The answer string, or — when ``stream=True`` — a generator yielding
+            chunk dicts (``type``: ``content``/``tool``/``done``/``error``),
+            stopping after ``done`` or ``error``. ``incognito`` and
+            ``max_tokens`` do not apply to the streaming path.
         """
+        if stream:
+            body: dict[str, Any] = {
+                "identifier": username,
+                "question": question,
+                "stream": True,
+            }
+            if conversation_id:
+                body["conversation_id"] = conversation_id
+            return self._iter_sse(
+                self._partner_http,
+                "POST",
+                "/partner/ask",
+                json=body,
+                is_terminal=lambda o: o.get("type") in _ASK_TERMINAL,
+            )
         response = self.chat.completions.create(
             messages=[{"role": "user", "content": question}],
             username=username,
@@ -161,7 +187,8 @@ class ConversationsMixin:
         question: str,
         *,
         conversation_id: Optional[str] = None,
-    ) -> dict:
+        stream: bool = False,
+    ) -> dict | Iterator[dict]:
         """Talk to your own SuperMe AI agent.
 
         Example:
@@ -169,103 +196,37 @@ class ConversationsMixin:
             result = client.ask_my_agent("Summarise my last 3 posts")
             print(result["response"])
 
-            # continue the conversation
-            result2 = client.ask_my_agent(
-                "Make it shorter",
-                conversation_id=result["conversation_id"],
-            )
+            # streaming (yields typed turn-event dicts over SSE)
+            for evt in client.ask_my_agent("Summarise my posts", stream=True):
+                if evt["type"] == "content":
+                    print(evt["content"], end="", flush=True)
             ```
 
         Args:
             question: Your message to the agent.
             conversation_id: Continue an existing conversation.
+            stream: If True, return a generator of SSE turn-event dicts instead
+                of the final dict.
 
         Returns:
-            Dict with ``response`` and ``conversation_id``.
+            Dict with ``response`` and ``conversation_id``, or — when
+            ``stream=True`` — a generator yielding typed turn-event dicts
+            (``turn_started``, ``content``, ``message``, ``tool_call``,
+            ``tool_result``, ``turn_completed``, ``turn_failed``, ...), stopping
+            after a terminal event.
         """
+        if stream:
+            body: dict[str, Any] = {"question": question, "stream": True}
+            if conversation_id:
+                body["conversation_id"] = conversation_id
+            return self._iter_sse(
+                self._partner_http,
+                "POST",
+                "/partner/agent",
+                json=body,
+                is_terminal=lambda o: o.get("type") in _AGENT_TERMINAL,
+            )
         args: dict[str, Any] = {"question": question}
         if conversation_id:
             args["conversation_id"] = conversation_id
         return self._mcp_tool_call("ask_my_agent", args)
-
-    def ask_stream(
-        self,
-        question: str,
-        username: str = "ludo",
-        *,
-        conversation_id: Optional[str] = None,
-    ) -> Iterator[dict]:
-        """Stream an answer from a user's agent via ``POST /partner/ask`` (SSE).
-
-        Example:
-            ```python
-            for chunk in client.ask_stream("What is PMF?", username="ludo"):
-                if chunk["type"] == "content":
-                    print(chunk["text"], end="", flush=True)
-                elif chunk["type"] == "done":
-                    conversation_id = chunk["conversation_id"]
-            ```
-
-        Args:
-            question: The question to ask.
-            username: Target SuperMe username or user_id.
-            conversation_id: Continue an existing conversation.
-
-        Yields:
-            Chunk dicts, each with a ``type`` key: ``content`` (``text``),
-            ``tool`` (``label``), ``done`` (``conversation_id``), or
-            ``error`` (``message``). Stops after ``done`` or ``error``.
-        """
-        body: dict[str, Any] = {
-            "identifier": username,
-            "question": question,
-            "stream": True,
-        }
-        if conversation_id:
-            body["conversation_id"] = conversation_id
-        yield from self._iter_sse(
-            self._partner_http,
-            "POST",
-            "/partner/ask",
-            json=body,
-            is_terminal=lambda o: o.get("type") in _ASK_TERMINAL,
-        )
-
-    def ask_my_agent_stream(
-        self,
-        question: str,
-        *,
-        conversation_id: Optional[str] = None,
-    ) -> Iterator[dict]:
-        """Stream your own agent's turn via ``POST /partner/agent`` (SSE).
-
-        Example:
-            ```python
-            for evt in client.ask_my_agent_stream("Summarise my last 3 posts"):
-                if evt["type"] == "content":
-                    print(evt["content"], end="", flush=True)
-                elif evt["type"] == "turn_completed":
-                    conversation_id = evt["conversation_id"]
-            ```
-
-        Args:
-            question: Your message to the agent.
-            conversation_id: Continue an existing conversation.
-
-        Yields:
-            Typed turn-event dicts (``turn_started``, ``content``, ``message``,
-            ``tool_call``, ``tool_result``, ``turn_completed``, ``turn_failed``,
-            ...), each with a ``type`` and ``conversation_id``. Stops after a
-            terminal event (``turn_completed`` / ``turn_failed`` /
-            ``turn_interrupted``).
-        """
-        body: dict[str, Any] = {"question": question, "stream": True}
-        if conversation_id:
-            body["conversation_id"] = conversation_id
-        yield from self._iter_sse(
-            self._partner_http,
-            "POST",
-            "/partner/agent",
-            json=body,
-            is_terminal=lambda o: o.get("type") in _AGENT_TERMINAL,
-        )

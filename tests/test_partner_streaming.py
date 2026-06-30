@@ -1,4 +1,4 @@
-"""Tests for partner SSE streaming (ask_stream, ask_my_agent_stream) and the
+"""Tests for partner SSE streaming (ask(stream=True), ask_my_agent(stream=True)) and the
 resource-backed conversation reads + user_details_read. Unit (mocked) only."""
 
 from __future__ import annotations
@@ -62,7 +62,7 @@ def _rpc_resource(payload) -> httpx.Response:
 
 
 def test_streaming_methods_exist():
-    for name in ("ask_stream", "ask_my_agent_stream"):
+    for name in ("ask", "ask_my_agent"):
         assert callable(getattr(SuperMeClient, name))
         assert callable(getattr(AsyncSuperMeClient, name))
 
@@ -83,7 +83,7 @@ def test_async_read_methods_exist():
 
 
 # ---------------------------------------------------------------------------
-# ask_stream → /partner/ask
+# ask(stream=True) → /partner/ask
 # ---------------------------------------------------------------------------
 
 
@@ -102,7 +102,7 @@ class TestAskStream:
             )
         )
         with SuperMeClient(api_key=FAKE_JWT) as client:
-            chunks = list(client.ask_stream("What is PMF?", username="ludo"))
+            chunks = list(client.ask("What is PMF?", username="ludo", stream=True))
 
         body = json.loads(route.calls[0].request.content)
         assert body["identifier"] == "ludo"
@@ -124,7 +124,7 @@ class TestAskStream:
             )
         )
         with SuperMeClient(api_key=FAKE_JWT) as client:
-            chunks = list(client.ask_stream("hi", username="ludo"))
+            chunks = list(client.ask("hi", username="ludo", stream=True))
         assert len(chunks) == 1
         assert chunks[0]["type"] == "error"
 
@@ -138,13 +138,13 @@ class TestAskStream:
             )
         )
         with SuperMeClient(api_key=FAKE_JWT) as client:
-            list(client.ask_stream("hi", username="ludo", conversation_id="c1"))
+            list(client.ask("hi", username="ludo", conversation_id="c1", stream=True))
         body = json.loads(route.calls[0].request.content)
         assert body["conversation_id"] == "c1"
 
 
 # ---------------------------------------------------------------------------
-# ask_my_agent_stream → /partner/agent
+# ask_my_agent(stream=True) → /partner/agent
 # ---------------------------------------------------------------------------
 
 
@@ -167,7 +167,7 @@ class TestAskMyAgentStream:
             )
         )
         with SuperMeClient(api_key=FAKE_JWT) as client:
-            events = list(client.ask_my_agent_stream("summarise"))
+            events = list(client.ask_my_agent("summarise", stream=True))
 
         body = json.loads(route.calls[0].request.content)
         assert body["question"] == "summarise"
@@ -187,7 +187,7 @@ class TestAskMyAgentStream:
             )
         )
         with SuperMeClient(api_key=FAKE_JWT) as client:
-            events = list(client.ask_my_agent_stream("hi"))
+            events = list(client.ask_my_agent("hi", stream=True))
         assert len(events) == 1
         assert events[0]["type"] == "turn_failed"
 
@@ -212,7 +212,7 @@ class TestAsyncStreaming:
             )
         )
         async with AsyncSuperMeClient(api_key=FAKE_JWT) as client:
-            chunks = [c async for c in client.ask_stream("hi", username="ludo")]
+            chunks = [c async for c in client.ask("hi", username="ludo", stream=True)]
         assert [c["type"] for c in chunks] == ["content", "done"]
 
     @pytest.mark.asyncio
@@ -230,7 +230,7 @@ class TestAsyncStreaming:
             )
         )
         async with AsyncSuperMeClient(api_key=FAKE_JWT) as client:
-            events = [e async for e in client.ask_my_agent_stream("hi")]
+            events = [e async for e in client.ask_my_agent("hi", stream=True)]
         assert [e["type"] for e in events] == ["content", "turn_completed"]
 
     @pytest.mark.asyncio
