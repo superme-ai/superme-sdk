@@ -50,6 +50,7 @@ nav:
     - Authentication: api/auth.md
     - Client: api/client.md
     - Models: api/models.md
+    - Streaming events: api/streaming.md
     - Sync:
       - Conversations: api/services/conversations.md
       - Profiles: api/services/profiles.md

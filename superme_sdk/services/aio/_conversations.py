@@ -6,6 +6,7 @@ from collections.abc import AsyncIterator, Awaitable
 from typing import Any, Literal, Optional, overload
 
 from ..._transport._terminals import AGENT_TERMINAL, ASK_TERMINAL
+from ...streaming import PartnerStreamChunk
 
 
 class AsyncConversationsMixin:
@@ -39,7 +40,7 @@ class AsyncConversationsMixin:
         *,
         conversation_id: Optional[str] = ...,
         stream: Literal[True],
-    ) -> AsyncIterator[dict]: ...
+    ) -> AsyncIterator[PartnerStreamChunk]: ...
 
     def ask(
         self,
@@ -48,7 +49,7 @@ class AsyncConversationsMixin:
         *,
         conversation_id: Optional[str] = None,
         stream: bool = False,
-    ) -> Awaitable[str] | AsyncIterator[dict]:
+    ) -> Awaitable[str] | AsyncIterator[PartnerStreamChunk]:
         """Ask a single question to a user's SuperMe agent (async).
 
         Example:
@@ -105,7 +106,7 @@ class AsyncConversationsMixin:
         *,
         conversation_id: Optional[str] = ...,
         stream: Literal[True],
-    ) -> AsyncIterator[dict]: ...
+    ) -> AsyncIterator[PartnerStreamChunk]: ...
 
     def ask_my_agent(
         self,
@@ -113,22 +114,23 @@ class AsyncConversationsMixin:
         *,
         conversation_id: Optional[str] = None,
         stream: bool = False,
-    ) -> Awaitable[dict] | AsyncIterator[dict]:
+    ) -> Awaitable[dict] | AsyncIterator[PartnerStreamChunk]:
         """Talk to your own SuperMe AI agent (async).
 
         Example:
             ```python
             result = await client.ask_my_agent("Summarise my last 3 posts")
 
-            async for evt in client.ask_my_agent("Summarise my posts", stream=True):
-                if evt["type"] == "content":
-                    print(evt["content"], end="", flush=True)
+            async for chunk in client.ask_my_agent("Summarise my posts", stream=True):
+                if chunk["type"] == "content":
+                    print(chunk["text"], end="", flush=True)
             ```
 
         Returns:
             An awaitable resolving to a dict with ``response`` and
             ``conversation_id``, or — when ``stream=True`` — an async generator
-            of typed turn-event dicts (stops after a terminal event).
+            of partner chunk dicts (``content``/``tool``/``done``/``error``),
+            stopping after ``done`` or ``error``.
         """
         if stream:
             body: dict[str, Any] = {"question": question, "stream": True}

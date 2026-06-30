@@ -7,6 +7,7 @@ from collections.abc import Iterator
 from typing import Any, Literal, Optional, overload
 
 from .._transport._terminals import AGENT_TERMINAL, ASK_TERMINAL
+from ..streaming import PartnerStreamChunk
 
 
 class ConversationsMixin:
@@ -33,7 +34,7 @@ class ConversationsMixin:
         *,
         stream: Literal[True],
         **kwargs: Any,
-    ) -> Iterator[dict]: ...
+    ) -> Iterator[PartnerStreamChunk]: ...
 
     def ask(
         self,
@@ -44,7 +45,7 @@ class ConversationsMixin:
         incognito: bool = False,
         stream: bool = False,
         **kwargs: Any,
-    ) -> str | Iterator[dict]:
+    ) -> str | Iterator[PartnerStreamChunk]:
         """Ask a single question to a user's SuperMe agent.
 
         Example:
@@ -222,7 +223,7 @@ class ConversationsMixin:
         *,
         conversation_id: Optional[str] = ...,
         stream: Literal[True],
-    ) -> Iterator[dict]: ...
+    ) -> Iterator[PartnerStreamChunk]: ...
 
     def ask_my_agent(
         self,
@@ -230,7 +231,7 @@ class ConversationsMixin:
         *,
         conversation_id: Optional[str] = None,
         stream: bool = False,
-    ) -> dict | Iterator[dict]:
+    ) -> dict | Iterator[PartnerStreamChunk]:
         """Talk to your own SuperMe AI agent.
 
         Example:
@@ -238,24 +239,24 @@ class ConversationsMixin:
             result = client.ask_my_agent("Summarise my last 3 posts")
             print(result["response"])
 
-            # streaming (yields typed turn-event dicts over SSE)
-            for evt in client.ask_my_agent("Summarise my posts", stream=True):
-                if evt["type"] == "content":
-                    print(evt["content"], end="", flush=True)
+            # streaming (yields partner chunk dicts over SSE)
+            for chunk in client.ask_my_agent("Summarise my posts", stream=True):
+                if chunk["type"] == "content":
+                    print(chunk["text"], end="", flush=True)
             ```
 
         Args:
             question: Your message to the agent.
             conversation_id: Continue an existing conversation.
-            stream: If True, return a generator of SSE turn-event dicts instead
-                of the final dict.
+            stream: If True, return a generator of SSE chunk dicts instead of
+                the final dict.
 
         Returns:
             Dict with ``response`` and ``conversation_id``, or — when
-            ``stream=True`` — a generator yielding typed turn-event dicts
-            (``turn_started``, ``content``, ``message``, ``tool_call``,
-            ``tool_result``, ``turn_completed``, ``turn_failed``, ...), stopping
-            after a terminal event.
+            ``stream=True`` — a generator yielding partner chunk dicts (``type``:
+            ``content``/``tool``/``done``/``error`` — see
+            :data:`~superme_sdk.streaming.PartnerStreamChunk`), stopping after
+            ``done`` or ``error``.
         """
         if stream:
             body: dict[str, Any] = {"question": question, "stream": True}
