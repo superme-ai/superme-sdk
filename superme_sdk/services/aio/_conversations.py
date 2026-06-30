@@ -2,18 +2,20 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import AsyncIterator
 from typing import Any, Optional
-
-from ..._transport._sse import aiter_sse_lines
 
 _ASK_TERMINAL = {"done", "error"}
 _AGENT_TERMINAL = {"turn_completed", "turn_failed", "turn_interrupted"}
 
 
 class AsyncConversationsMixin:
-    """Async variants of :class:`~superme_sdk.services._conversations.ConversationsMixin`."""
+    """Async variants of :class:`~superme_sdk.services._conversations.ConversationsMixin`.
+
+    Streaming methods hold an open SSE connection until a terminal event. If you
+    stop early (``break``), call ``aclose()`` on the generator (or fully drain
+    it) so the connection is released promptly rather than at GC time.
+    """
 
     async def ask_my_agent(
         self,
@@ -30,6 +32,25 @@ class AsyncConversationsMixin:
         if conversation_id:
             args["conversation_id"] = conversation_id
         return await self._async_mcp_tool_call("ask_my_agent", args)
+
+    async def list_conversations(self, *, limit: int = 20) -> list[dict]:
+        """Return the authenticated user's most recent conversations (async).
+
+        Reads the ``superme://me/conversations`` MCP resource (server-capped at
+        ~20); ``limit`` slices client-side.
+        """
+        result = await self._async_mcp_read_resource("superme://me/conversations")
+        if isinstance(result, list):
+            return result[:limit]
+        convs = result.get("conversations", []) if isinstance(result, dict) else []
+        return convs[:limit] if isinstance(convs, list) else []
+
+    async def get_conversation(self, conversation_id: str) -> dict:
+        """Fetch full details of a single conversation, including messages (async)."""
+        result = await self._async_mcp_read_resource(
+            f"superme://conversation/{conversation_id}"
+        )
+        return result if isinstance(result, dict) else {}
 
     async def ask_stream(
         self,
@@ -59,7 +80,13 @@ class AsyncConversationsMixin:
         }
         if conversation_id:
             body["conversation_id"] = conversation_id
-        async for chunk in self._astream_partner("/partner/ask", body, _ASK_TERMINAL):
+        async for chunk in self._aiter_sse(
+            self._async_partner_http,
+            "POST",
+            "/partner/ask",
+            json=body,
+            is_terminal=lambda o: o.get("type") in _ASK_TERMINAL,
+        ):
             yield chunk
 
     async def ask_my_agent_stream(
@@ -85,29 +112,11 @@ class AsyncConversationsMixin:
         body: dict[str, Any] = {"question": question, "stream": True}
         if conversation_id:
             body["conversation_id"] = conversation_id
-        async for evt in self._astream_partner("/partner/agent", body, _AGENT_TERMINAL):
-            yield evt
-
-    async def _astream_partner(
-        self, path: str, body: dict, terminal: set[str]
-    ) -> AsyncIterator[dict]:
-        async with self._async_partner_http.stream(
+        async for evt in self._aiter_sse(
+            self._async_partner_http,
             "POST",
-            path,
+            "/partner/agent",
             json=body,
-            headers={"Accept-Encoding": "identity"},
-            timeout=None,
-        ) as resp:
-            if not resp.is_success:
-                await resp.aread()
-            self._check_rest_response(resp)
-            async for line in aiter_sse_lines(resp):
-                try:
-                    obj = json.loads(line)
-                except (json.JSONDecodeError, ValueError):
-                    continue
-                if not isinstance(obj, dict):
-                    continue
-                yield obj
-                if obj.get("type") in terminal:
-                    return
+            is_terminal=lambda o: o.get("type") in _AGENT_TERMINAL,
+        ):
+            yield evt

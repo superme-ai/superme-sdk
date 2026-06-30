@@ -134,7 +134,7 @@ make test-live
 | `list_conversations(*, limit)` | `list[dict]` | List your most recent conversations. |
 | `get_conversation(conversation_id)` | `dict` | Fetch a single conversation with all its messages. |
 
-Async (`AsyncSuperMeClient`) exposes `ask_stream` and `ask_my_agent_stream` as async generators (`async for`).
+`AsyncSuperMeClient` mirrors these: `ask_stream` / `ask_my_agent_stream` are async generators (`async for`), and `ask_my_agent`, `list_conversations`, `get_conversation`, `get_profile`, `get_user_details`, `find_user_by_name`, `find_users_by_names`, and `find_users_on_topic` are awaitable.
 
 #### Profiles & search
 

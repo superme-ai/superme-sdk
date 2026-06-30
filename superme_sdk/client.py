@@ -20,6 +20,7 @@ from .services._workgroups import WorkgroupsMixin
 from .services.aio._agentic_resume import AsyncAgenticResumeMixin
 from .services.aio._conversations import AsyncConversationsMixin
 from .services.aio._interviews import AsyncInterviewsMixin
+from .services.aio._profiles import AsyncProfilesMixin
 from .services.aio._provision import AsyncProvisionMixin
 from .services.aio._workgroups import AsyncWorkgroupsMixin
 from .models import ChatCompletion, Choice, Message, Usage
@@ -184,6 +185,7 @@ class SuperMeClient(
 class AsyncSuperMeClient(
     AsyncAgenticResumeMixin,
     AsyncConversationsMixin,
+    AsyncProfilesMixin,
     AsyncInterviewsMixin,
     AsyncWorkgroupsMixin,
     AsyncProvisionMixin,

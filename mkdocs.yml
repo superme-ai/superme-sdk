@@ -58,6 +58,7 @@ nav:
       - Provisioning: api/services/provision.md
     - Async (aio):
       - Conversations: api/services/aio/conversations.md
+      - Profiles: api/services/aio/profiles.md
       - Interviews: api/services/aio/interviews.md
       - Agentic Resume: api/services/aio/agentic_resume.md
       - Provisioning: api/services/aio/provision.md

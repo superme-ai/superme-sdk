@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import json
 import warnings
 from collections.abc import Iterator
 from typing import Any, Optional
-
-from .._transport._sse import iter_sse_lines
 
 _ASK_TERMINAL = {"done", "error"}
 _AGENT_TERMINAL = {"turn_completed", "turn_failed", "turn_interrupted"}
@@ -269,7 +266,13 @@ class ConversationsMixin:
         }
         if conversation_id:
             body["conversation_id"] = conversation_id
-        yield from self._stream_partner("/partner/ask", body, _ASK_TERMINAL)
+        yield from self._iter_sse(
+            self._partner_http,
+            "POST",
+            "/partner/ask",
+            json=body,
+            is_terminal=lambda o: o.get("type") in _ASK_TERMINAL,
+        )
 
     def ask_my_agent_stream(
         self,
@@ -302,28 +305,10 @@ class ConversationsMixin:
         body: dict[str, Any] = {"question": question, "stream": True}
         if conversation_id:
             body["conversation_id"] = conversation_id
-        yield from self._stream_partner("/partner/agent", body, _AGENT_TERMINAL)
-
-    def _stream_partner(
-        self, path: str, body: dict, terminal: set[str]
-    ) -> Iterator[dict]:
-        with self._partner_http.stream(
+        yield from self._iter_sse(
+            self._partner_http,
             "POST",
-            path,
+            "/partner/agent",
             json=body,
-            headers={"Accept-Encoding": "identity"},
-            timeout=None,
-        ) as resp:
-            if not resp.is_success:
-                resp.read()
-            self._check_rest_response(resp)
-            for line in iter_sse_lines(resp):
-                try:
-                    obj = json.loads(line)
-                except (json.JSONDecodeError, ValueError):
-                    continue
-                if not isinstance(obj, dict):
-                    continue
-                yield obj
-                if obj.get("type") in terminal:
-                    return
+            is_terminal=lambda o: o.get("type") in _AGENT_TERMINAL,
+        )

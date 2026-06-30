@@ -11,8 +11,13 @@ Expects the following attributes set by ``AsyncSuperMeClient.__init__``:
 from __future__ import annotations
 
 import json
+from collections.abc import AsyncIterator, Callable
 from typing import Any
 
+import httpx
+
+from .._transport._http import _STREAM_TIMEOUT, _loads_or_none
+from .._transport._sse import aiter_sse_lines
 from ..exceptions import MCPError
 
 
@@ -63,3 +68,40 @@ class AsyncHttpMixin:
         raw_text = content_list[0].get("text")
         text = (raw_text or "").strip() or "{}"
         return json.loads(text)
+
+    async def _async_mcp_read_resource(self, uri: str) -> "dict[str, Any] | list[Any]":
+        """Read an MCP resource by URI asynchronously and return its JSON contents."""
+        result = await self._async_mcp_request("resources/read", {"uri": uri})
+        contents = result.get("contents", [])
+        if not contents:
+            return {}
+        text = (contents[0].get("text") or "").strip() or "{}"
+        return json.loads(text)
+
+    async def _aiter_sse(
+        self,
+        http: httpx.AsyncClient,
+        method: str,
+        url: str,
+        *,
+        json: dict | None = None,
+        is_terminal: Callable[[dict], bool] | None = None,
+    ) -> AsyncIterator[dict]:
+        """Async twin of :meth:`HttpMixin._iter_sse`."""
+        async with http.stream(
+            method,
+            url,
+            json=json,
+            headers={"Accept-Encoding": "identity"},
+            timeout=_STREAM_TIMEOUT,
+        ) as resp:
+            if not resp.is_success:
+                await resp.aread()
+            self._check_rest_response(resp)
+            async for line in aiter_sse_lines(resp):
+                obj = _loads_or_none(line)
+                if obj is None:
+                    continue
+                yield obj
+                if is_terminal is not None and is_terminal(obj):
+                    return

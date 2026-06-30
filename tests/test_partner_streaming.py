@@ -71,6 +71,19 @@ def test_get_user_details_exists():
     assert callable(getattr(SuperMeClient, "get_user_details"))
 
 
+def test_async_read_methods_exist():
+    for name in (
+        "get_profile",
+        "get_user_details",
+        "find_user_by_name",
+        "find_users_by_names",
+        "find_users_on_topic",
+        "list_conversations",
+        "get_conversation",
+    ):
+        assert callable(getattr(AsyncSuperMeClient, name)), f"async missing {name}"
+
+
 # ---------------------------------------------------------------------------
 # ask_stream → /partner/ask
 # ---------------------------------------------------------------------------
@@ -221,6 +234,41 @@ class TestAsyncStreaming:
         async with AsyncSuperMeClient(api_key=FAKE_JWT) as client:
             events = [e async for e in client.ask_my_agent_stream("hi")]
         assert [e["type"] for e in events] == ["content", "turn_completed"]
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_async_get_user_details(self):
+        respx.post(f"{MCP_BASE}/mcp/").mock(
+            return_value=_rpc_ok({"user_id": "u1", "summary": "deep"})
+        )
+        async with AsyncSuperMeClient(api_key=FAKE_JWT) as client:
+            result = await client.get_user_details("ludo")
+        assert result["summary"] == "deep"
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_async_list_conversations_reads_resource(self):
+        route = respx.post(f"{MCP_BASE}/mcp/").mock(
+            return_value=_rpc_resource([{"id": "c1"}, {"id": "c2"}])
+        )
+        async with AsyncSuperMeClient(api_key=FAKE_JWT) as client:
+            result = await client.list_conversations(limit=5)
+        body = json.loads(route.calls[0].request.content)
+        assert body["method"] == "resources/read"
+        assert body["params"]["uri"] == "superme://me/conversations"
+        assert len(result) == 2
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_async_get_profile_own_reads_resource(self):
+        route = respx.post(f"{MCP_BASE}/mcp/").mock(
+            return_value=_rpc_resource({"name": "Me"})
+        )
+        async with AsyncSuperMeClient(api_key=FAKE_JWT) as client:
+            result = await client.get_profile()
+        body = json.loads(route.calls[0].request.content)
+        assert body["params"]["uri"] == "superme://me/profile"
+        assert result == {"name": "Me"}
 
 
 # ---------------------------------------------------------------------------
