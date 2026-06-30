@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Awaitable
-from typing import Any, Optional
+from typing import Any, Literal, Optional, overload
 
-_ASK_TERMINAL = {"done", "error"}
-_AGENT_TERMINAL = {"turn_completed", "turn_failed", "turn_interrupted"}
+from ..._transport._terminals import AGENT_TERMINAL, ASK_TERMINAL
 
 
 class AsyncConversationsMixin:
@@ -17,7 +16,30 @@ class AsyncConversationsMixin:
     A streaming generator holds an open SSE connection until a terminal event —
     if you stop early (``break``), call ``aclose()`` on it (or fully drain it)
     so the connection is released promptly rather than at GC time.
+
+    Note: unlike the sync client, async non-streaming ``ask`` is served by the
+    partner endpoint and does not support ``incognito`` / ``max_tokens``.
     """
+
+    @overload
+    def ask(
+        self,
+        question: str,
+        username: str = ...,
+        *,
+        conversation_id: Optional[str] = ...,
+        stream: Literal[False] = ...,
+    ) -> Awaitable[str]: ...
+
+    @overload
+    def ask(
+        self,
+        question: str,
+        username: str = ...,
+        *,
+        conversation_id: Optional[str] = ...,
+        stream: Literal[True],
+    ) -> AsyncIterator[dict]: ...
 
     def ask(
         self,
@@ -41,7 +63,8 @@ class AsyncConversationsMixin:
         Returns:
             An awaitable resolving to the answer string, or — when
             ``stream=True`` — an async generator of SSE chunk dicts (``type``:
-            ``content``/``tool``/``done``/``error``).
+            ``content``/``tool``/``done``/``error``). ``incognito`` /
+            ``max_tokens`` are not supported on the async path.
         """
         body: dict[str, Any] = {
             "identifier": username,
@@ -56,7 +79,7 @@ class AsyncConversationsMixin:
                 "POST",
                 "/partner/ask",
                 json=body,
-                is_terminal=lambda o: o.get("type") in _ASK_TERMINAL,
+                is_terminal=lambda o: o.get("type") in ASK_TERMINAL,
             )
         return self._ask_nonstream(body)
 
@@ -65,6 +88,24 @@ class AsyncConversationsMixin:
         self._check_rest_response(resp)
         data = resp.json()
         return data.get("answer", "") if isinstance(data, dict) else ""
+
+    @overload
+    def ask_my_agent(
+        self,
+        question: str,
+        *,
+        conversation_id: Optional[str] = ...,
+        stream: Literal[False] = ...,
+    ) -> Awaitable[dict]: ...
+
+    @overload
+    def ask_my_agent(
+        self,
+        question: str,
+        *,
+        conversation_id: Optional[str] = ...,
+        stream: Literal[True],
+    ) -> AsyncIterator[dict]: ...
 
     def ask_my_agent(
         self,
@@ -98,7 +139,7 @@ class AsyncConversationsMixin:
                 "POST",
                 "/partner/agent",
                 json=body,
-                is_terminal=lambda o: o.get("type") in _AGENT_TERMINAL,
+                is_terminal=lambda o: o.get("type") in AGENT_TERMINAL,
             )
         args: dict[str, Any] = {"question": question}
         if conversation_id:

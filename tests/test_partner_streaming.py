@@ -235,6 +235,21 @@ class TestAsyncStreaming:
 
     @pytest.mark.asyncio
     @respx.mock
+    async def test_async_ask_nonstream_posts_partner_and_returns_answer(self):
+        route = respx.post(f"{PARTNER_BASE}/partner/ask").mock(
+            return_value=httpx.Response(
+                200, json={"answer": "PMF is retention.", "conversation_id": "c1"}
+            )
+        )
+        async with AsyncSuperMeClient(api_key=FAKE_JWT) as client:
+            answer = await client.ask("What is PMF?", username="ludo")
+        body = json.loads(route.calls[0].request.content)
+        assert body["stream"] is False
+        assert body["identifier"] == "ludo"
+        assert answer == "PMF is retention."
+
+    @pytest.mark.asyncio
+    @respx.mock
     async def test_async_get_user_details(self):
         respx.post(f"{MCP_BASE}/mcp/").mock(
             return_value=_rpc_ok({"user_id": "u1", "summary": "deep"})

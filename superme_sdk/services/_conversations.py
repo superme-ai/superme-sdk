@@ -4,13 +4,37 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Iterator
-from typing import Any, Optional
+from typing import Any, Literal, Optional, overload
 
-_ASK_TERMINAL = {"done", "error"}
-_AGENT_TERMINAL = {"turn_completed", "turn_failed", "turn_interrupted"}
+from .._transport._terminals import AGENT_TERMINAL, ASK_TERMINAL
 
 
 class ConversationsMixin:
+    @overload
+    def ask(
+        self,
+        question: str,
+        username: str = ...,
+        conversation_id: Optional[str] = ...,
+        max_tokens: int = ...,
+        incognito: bool = ...,
+        stream: Literal[False] = ...,
+        **kwargs: Any,
+    ) -> str: ...
+
+    @overload
+    def ask(
+        self,
+        question: str,
+        username: str = ...,
+        conversation_id: Optional[str] = ...,
+        max_tokens: int = ...,
+        incognito: bool = ...,
+        *,
+        stream: Literal[True],
+        **kwargs: Any,
+    ) -> Iterator[dict]: ...
+
     def ask(
         self,
         question: str,
@@ -65,7 +89,7 @@ class ConversationsMixin:
                 "POST",
                 "/partner/ask",
                 json=body,
-                is_terminal=lambda o: o.get("type") in _ASK_TERMINAL,
+                is_terminal=lambda o: o.get("type") in ASK_TERMINAL,
             )
         response = self.chat.completions.create(
             messages=[{"role": "user", "content": question}],
@@ -182,6 +206,24 @@ class ConversationsMixin:
         data = self._mcp_request("tools/list", {})
         return data.get("tools", [])
 
+    @overload
+    def ask_my_agent(
+        self,
+        question: str,
+        *,
+        conversation_id: Optional[str] = ...,
+        stream: Literal[False] = ...,
+    ) -> dict: ...
+
+    @overload
+    def ask_my_agent(
+        self,
+        question: str,
+        *,
+        conversation_id: Optional[str] = ...,
+        stream: Literal[True],
+    ) -> Iterator[dict]: ...
+
     def ask_my_agent(
         self,
         question: str,
@@ -224,7 +266,7 @@ class ConversationsMixin:
                 "POST",
                 "/partner/agent",
                 json=body,
-                is_terminal=lambda o: o.get("type") in _AGENT_TERMINAL,
+                is_terminal=lambda o: o.get("type") in AGENT_TERMINAL,
             )
         args: dict[str, Any] = {"question": question}
         if conversation_id:

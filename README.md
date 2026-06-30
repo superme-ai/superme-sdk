@@ -126,7 +126,7 @@ make test-live
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `ask(question, username, *, conversation_id, max_tokens, incognito, stream=False)` | `str` \| `generator` | Ask a question to a user's SuperMe agent. Returns the answer text, or — with `stream=True` — a generator of SSE chunk dicts (`content` / `tool` / `done` / `error`, via `POST /partner/ask`). `incognito`/`max_tokens` apply to non-streaming only. |
+| `ask(question, username, conversation_id, max_tokens, incognito, stream=False)` | `str` \| `generator` | Ask a question to a user's SuperMe agent. Returns the answer text, or — with `stream=True` — a generator of SSE chunk dicts (`content` / `tool` / `done` / `error`, via `POST /partner/ask`). `incognito`/`max_tokens` apply to non-streaming only. |
 | ~~`ask_with_history(messages, username, *, conversation_id, max_tokens, incognito)`~~ | `(str, str\|None)` | **Deprecated** — kept for backward compatibility. Use `ask` with `conversation_id` instead. Only the last user message is sent; the rest of the list is ignored. |
 | `ask_my_agent(question, *, conversation_id, stream=False)` | `dict` \| `generator` | Talk to your own SuperMe AI agent. Returns `{"response": ..., "conversation_id": ...}`, or — with `stream=True` — a generator of typed turn-event dicts (`turn_started`, `content`, `tool_call`, `turn_completed`, ..., via `POST /partner/agent`). |
 
