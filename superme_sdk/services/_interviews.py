@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import json
 from typing import Any
 
 from ..models import InterviewStatus
-
-from .._transport._sse import iter_sse_lines
 
 
 class InterviewsMixin:
@@ -203,23 +200,9 @@ class InterviewsMixin:
         ``withdrawn``) cause the generator to return.
         """
         terminal = {"completed", "scoring", "scored", "failed", "withdrawn"}
-        with self._rest_http.stream(
+        yield from self._iter_sse(
+            self._rest_http,
             "GET",
             f"/api/v3/agent/interview/{interview_id}/stream",
-            headers={"Accept-Encoding": "identity"},
-            timeout=None,
-        ) as resp:
-            if not resp.is_success:
-                resp.read()
-            self._check_rest_response(resp)
-            for line in iter_sse_lines(resp):
-                try:
-                    obj = json.loads(line)
-                except (json.JSONDecodeError, ValueError):
-                    continue
-                if isinstance(obj, dict):
-                    yield obj
-                    if obj.get("status") in terminal:
-                        return
-
-
+            is_terminal=lambda o: o.get("status") in terminal,
+        )

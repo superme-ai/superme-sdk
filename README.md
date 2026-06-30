@@ -120,23 +120,24 @@ make test-live
 
 ## API Reference
 
-### `SuperMeClient(api_key, base_url="https://mcp.superme.ai", rest_base_url="https://www.superme.ai", timeout=120.0)`
+### `SuperMeClient(api_key, base_url="https://mcp.superme.ai", rest_base_url="https://www.superme.ai", partner_base_url="https://api.superme.ai", timeout=120.0)`
 
 #### Conversations & agent
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `ask(question, username, *, conversation_id, max_tokens, incognito)` | `str` | Ask a question to a user's SuperMe agent. Returns the answer text. |
+| `ask(question, username, conversation_id, max_tokens, incognito, stream=False)` | `str` \| `generator` | Ask a question to a user's SuperMe agent. Returns the answer text, or — with `stream=True` — a generator of SSE chunk dicts (`content` / `tool` / `done` / `error`, via `POST /partner/ask`). `incognito`/`max_tokens` apply to non-streaming only. |
 | ~~`ask_with_history(messages, username, *, conversation_id, max_tokens, incognito)`~~ | `(str, str\|None)` | **Deprecated** — kept for backward compatibility. Use `ask` with `conversation_id` instead. Only the last user message is sent; the rest of the list is ignored. |
-| `ask_my_agent(question, *, conversation_id)` | `dict` | Talk to your own SuperMe AI agent. Returns `{"response": ..., "conversation_id": ...}`. |
-| `list_conversations(*, limit)` | `list[dict]` | List your most recent conversations. |
-| `get_conversation(conversation_id)` | `dict` | Fetch a single conversation with all its messages. |
+| `ask_my_agent(question, *, conversation_id, stream=False)` | `dict` \| `generator` | Talk to your own SuperMe AI agent. Returns `{"response": ..., "conversation_id": ...}`, or — with `stream=True` — a generator of typed turn-event dicts (`turn_started`, `content`, `tool_call`, `turn_completed`, ..., via `POST /partner/agent`). |
+
+`AsyncSuperMeClient` mirrors these: with `stream=True`, `ask` / `ask_my_agent` return async generators (`async for`); otherwise they are awaitable (`await`). `get_profile`, `get_user_details`, `find_user_by_name`, `find_users_by_names`, and `find_users_on_topic` are awaitable.
 
 #### Profiles & search
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `get_profile(identifier)` | `dict` | Get a user's public profile by user ID, username, or name. |
+| `get_profile(identifier=None)` | `dict` | Get a user's public profile card by user ID, username, or name. Omit `identifier` for your own profile. |
+| `get_user_details(identifier)` | `dict` | Read a user's **full** profile — un-truncated summary plus structured work experience, education, and skills (deeper than `get_profile`'s search card). |
 | `find_user_by_name(name, *, limit)` | `dict` | Search for users by name. |
 | `find_users_by_names(names, *, limit_per_name)` | `dict` | Resolve multiple names to SuperMe users in one call. |
 | `find_users_on_topic(question, *, max_results, excluded_user_ids)` | `dict` | Find SuperMe users who are experts on a topic. |
@@ -195,6 +196,35 @@ response = client.chat.completions.create(
 )
 print(response.choices[0].message.content)
 print(response.metadata["conversation_id"])
+```
+
+### Streaming
+
+Pass `stream=True` to stream tokens as they're generated over SSE. `ask`
+targets another user's agent; `ask_my_agent` targets your own.
+
+```python
+# Stream a question to a user's agent
+conversation_id = None
+for chunk in client.ask("What is PMF?", username="ludo", stream=True):
+    if chunk["type"] == "content":
+        print(chunk["text"], end="", flush=True)
+    elif chunk["type"] == "done":
+        conversation_id = chunk["conversation_id"]
+
+# Stream your own agent (richer turn events: tool calls, messages, ...)
+for evt in client.ask_my_agent("Summarise my last 3 posts", stream=True):
+    if evt["type"] == "content":
+        print(evt["content"], end="", flush=True)
+```
+
+Async (`AsyncSuperMeClient`) — `stream=True` returns an async generator:
+
+```python
+async with AsyncSuperMeClient(api_key=API_KEY) as client:
+    async for chunk in client.ask("What is PMF?", username="ludo", stream=True):
+        if chunk["type"] == "content":
+            print(chunk["text"], end="", flush=True)
 ```
 
 ### Low-level MCP access

@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import json
 from typing import Any, AsyncGenerator
 
-from ..._transport._sse import aiter_sse_lines
 from ...models import InterviewStatus
 
 
@@ -107,21 +105,10 @@ class AsyncInterviewsMixin:
         ``withdrawn``) cause the generator to return.
         """
         terminal = {"completed", "scoring", "scored", "failed", "withdrawn"}
-        async with self._async_rest_http.stream(
+        async for event in self._aiter_sse(
+            self._async_rest_http,
             "GET",
             f"/api/v3/agent/interview/{interview_id}/stream",
-            headers={"Accept-Encoding": "identity"},
-            timeout=None,
-        ) as resp:
-            if not resp.is_success:
-                await resp.aread()
-            self._check_rest_response(resp)
-            async for line in aiter_sse_lines(resp):
-                try:
-                    obj = json.loads(line)
-                except (json.JSONDecodeError, ValueError):
-                    continue
-                if isinstance(obj, dict):
-                    yield obj
-                    if obj.get("status") in terminal:
-                        return
+            is_terminal=lambda o: o.get("status") in terminal,
+        ):
+            yield event

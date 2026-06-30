@@ -3,10 +3,38 @@
 from __future__ import annotations
 
 import warnings
-from typing import Any, Optional
+from collections.abc import Iterator
+from typing import Any, Literal, Optional, overload
+
+from .._transport._terminals import AGENT_TERMINAL, ASK_TERMINAL
 
 
 class ConversationsMixin:
+    @overload
+    def ask(
+        self,
+        question: str,
+        username: str = ...,
+        conversation_id: Optional[str] = ...,
+        max_tokens: int = ...,
+        incognito: bool = ...,
+        stream: Literal[False] = ...,
+        **kwargs: Any,
+    ) -> str: ...
+
+    @overload
+    def ask(
+        self,
+        question: str,
+        username: str = ...,
+        conversation_id: Optional[str] = ...,
+        max_tokens: int = ...,
+        incognito: bool = ...,
+        *,
+        stream: Literal[True],
+        **kwargs: Any,
+    ) -> Iterator[dict]: ...
+
     def ask(
         self,
         question: str,
@@ -14,9 +42,10 @@ class ConversationsMixin:
         conversation_id: Optional[str] = None,
         max_tokens: int = 1000,
         incognito: bool = False,
+        stream: bool = False,
         **kwargs: Any,
-    ) -> str:
-        """Ask a single question.
+    ) -> str | Iterator[dict]:
+        """Ask a single question to a user's SuperMe agent.
 
         Example:
             ```python
@@ -25,18 +54,43 @@ class ConversationsMixin:
 
             # anonymously
             answer = client.ask("What is PMF?", username="ludo", incognito=True)
+
+            # streaming (yields chunk dicts over SSE)
+            for chunk in client.ask("What is PMF?", username="ludo", stream=True):
+                if chunk["type"] == "content":
+                    print(chunk["text"], end="", flush=True)
             ```
 
         Args:
             question: The question to ask.
-            username: Target SuperMe username.
+            username: Target SuperMe username or user_id.
             conversation_id: Continue an existing conversation.
-            max_tokens: Max response tokens.
-            incognito: Ask anonymously.
+            max_tokens: Max response tokens (non-streaming only).
+            incognito: Ask anonymously (non-streaming only).
+            stream: If True, return a generator of SSE chunk dicts instead of
+                the answer string.
 
         Returns:
-            Answer text.
+            The answer string, or — when ``stream=True`` — a generator yielding
+            chunk dicts (``type``: ``content``/``tool``/``done``/``error``),
+            stopping after ``done`` or ``error``. ``incognito`` and
+            ``max_tokens`` do not apply to the streaming path.
         """
+        if stream:
+            body: dict[str, Any] = {
+                "identifier": username,
+                "question": question,
+                "stream": True,
+            }
+            if conversation_id:
+                body["conversation_id"] = conversation_id
+            return self._iter_sse(
+                self._partner_http,
+                "POST",
+                "/partner/ask",
+                json=body,
+                is_terminal=lambda o: o.get("type") in ASK_TERMINAL,
+            )
         response = self.chat.completions.create(
             messages=[{"role": "user", "content": question}],
             username=username,
@@ -152,54 +206,31 @@ class ConversationsMixin:
         data = self._mcp_request("tools/list", {})
         return data.get("tools", [])
 
-    def list_conversations(self, *, limit: int = 20) -> list[dict]:
-        """Return the authenticated user's most recent conversations.
+    @overload
+    def ask_my_agent(
+        self,
+        question: str,
+        *,
+        conversation_id: Optional[str] = ...,
+        stream: Literal[False] = ...,
+    ) -> dict: ...
 
-        Example:
-            ```python
-            convs = client.list_conversations(limit=5)
-            for c in convs:
-                print(c["conversation_id"], c["title"])
-            ```
-
-        Args:
-            limit: Maximum number of conversations to return.
-
-        Returns:
-            List of conversation summary dicts.
-        """
-        result = self._mcp_tool_call("conversation_list", {"limit": limit})
-        if isinstance(result, list):
-            return result
-        conversations = result.get("conversations", [])
-        return conversations if isinstance(conversations, list) else []
-
-    def get_conversation(self, conversation_id: str) -> dict:
-        """Fetch full details of a single conversation, including all messages.
-
-        Example:
-            ```python
-            conv = client.get_conversation("conv_abc123")
-            for msg in conv["messages"]:
-                print(msg["role"], msg["content"])
-            ```
-
-        Args:
-            conversation_id: The conversation ID (from list_conversations).
-
-        Returns:
-            Conversation dict with metadata and message history.
-        """
-        return self._mcp_tool_call(
-            "conversation_read", {"conversation_id": conversation_id}
-        )
+    @overload
+    def ask_my_agent(
+        self,
+        question: str,
+        *,
+        conversation_id: Optional[str] = ...,
+        stream: Literal[True],
+    ) -> Iterator[dict]: ...
 
     def ask_my_agent(
         self,
         question: str,
         *,
         conversation_id: Optional[str] = None,
-    ) -> dict:
+        stream: bool = False,
+    ) -> dict | Iterator[dict]:
         """Talk to your own SuperMe AI agent.
 
         Example:
@@ -207,23 +238,37 @@ class ConversationsMixin:
             result = client.ask_my_agent("Summarise my last 3 posts")
             print(result["response"])
 
-            # continue the conversation
-            result2 = client.ask_my_agent(
-                "Make it shorter",
-                conversation_id=result["conversation_id"],
-            )
+            # streaming (yields typed turn-event dicts over SSE)
+            for evt in client.ask_my_agent("Summarise my posts", stream=True):
+                if evt["type"] == "content":
+                    print(evt["content"], end="", flush=True)
             ```
 
         Args:
             question: Your message to the agent.
             conversation_id: Continue an existing conversation.
+            stream: If True, return a generator of SSE turn-event dicts instead
+                of the final dict.
 
         Returns:
-            Dict with ``response`` and ``conversation_id``.
+            Dict with ``response`` and ``conversation_id``, or — when
+            ``stream=True`` — a generator yielding typed turn-event dicts
+            (``turn_started``, ``content``, ``message``, ``tool_call``,
+            ``tool_result``, ``turn_completed``, ``turn_failed``, ...), stopping
+            after a terminal event.
         """
+        if stream:
+            body: dict[str, Any] = {"question": question, "stream": True}
+            if conversation_id:
+                body["conversation_id"] = conversation_id
+            return self._iter_sse(
+                self._partner_http,
+                "POST",
+                "/partner/agent",
+                json=body,
+                is_terminal=lambda o: o.get("type") in AGENT_TERMINAL,
+            )
         args: dict[str, Any] = {"question": question}
         if conversation_id:
             args["conversation_id"] = conversation_id
         return self._mcp_tool_call("ask_my_agent", args)
-
-

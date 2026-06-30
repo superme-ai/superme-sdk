@@ -79,23 +79,6 @@ def test_live_ask_conversation_continuity(live_client, live_username):
     assert isinstance(answer1, str)
 
 
-@pytest.mark.live
-def test_live_list_conversations(live_client):
-    convs = live_client.list_conversations(limit=5)
-    assert isinstance(convs, list)
-
-
-@pytest.mark.live
-def test_live_get_conversation(live_client):
-    convs = live_client.list_conversations(limit=1)
-    if not convs:
-        pytest.skip("No conversations available for this account")
-    conv_id = convs[0].get("conversation_id") or convs[0].get("id")
-    assert conv_id, f"conversation item missing id: {convs[0]}"
-    detail = live_client.get_conversation(conv_id)
-    assert isinstance(detail, dict)
-
-
 # ---------------------------------------------------------------------------
 # Ask my agent
 # ---------------------------------------------------------------------------

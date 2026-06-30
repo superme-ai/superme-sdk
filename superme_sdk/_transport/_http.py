@@ -4,11 +4,16 @@ from __future__ import annotations
 
 import base64
 import json
+from collections.abc import Callable, Iterator
 from typing import Any
 
 import httpx
 
 from ..exceptions import APIError, AuthError, MCPError, NotFoundError, RateLimitError
+from ._sse import iter_sse_lines
+
+# Streaming: bound connect/write/pool but leave read unbounded (turns can be slow).
+_STREAM_TIMEOUT = httpx.Timeout(connect=10.0, write=10.0, pool=10.0, read=None)
 
 
 def _decode_jwt(token: str) -> dict[str, Any]:
@@ -23,6 +28,15 @@ def _decode_jwt(token: str) -> dict[str, Any]:
         return result if isinstance(result, dict) else {}
     except Exception:
         return {}
+
+
+def _loads_or_none(line: str) -> dict | None:
+    """Parse an SSE data line as a JSON object, or None if not a JSON dict."""
+    try:
+        obj = json.loads(line)
+    except (json.JSONDecodeError, ValueError):
+        return None
+    return obj if isinstance(obj, dict) else None
 
 
 class HttpMixin:
@@ -80,6 +94,51 @@ class HttpMixin:
             return {}
         raw_text = content_list[0].get("text")
         text = (raw_text or "").strip() or "{}"
+        return json.loads(text)
+
+    def _iter_sse(
+        self,
+        http: httpx.Client,
+        method: str,
+        url: str,
+        *,
+        json: dict | None = None,
+        is_terminal: Callable[[dict], bool] | None = None,
+    ) -> Iterator[dict]:
+        """Open an SSE stream and yield parsed JSON ``data:`` payloads (dicts).
+
+        Stops after ``is_terminal(obj)`` returns True, or when the server
+        closes the stream. Non-JSON and non-dict payloads are skipped.
+        """
+        with http.stream(
+            method,
+            url,
+            json=json,
+            headers={"Accept-Encoding": "identity"},
+            timeout=_STREAM_TIMEOUT,
+        ) as resp:
+            if not resp.is_success:
+                resp.read()
+            self._check_rest_response(resp)
+            for line in iter_sse_lines(resp):
+                obj = _loads_or_none(line)
+                if obj is None:
+                    continue
+                yield obj
+                if is_terminal is not None and is_terminal(obj):
+                    return
+
+    def _mcp_read_resource(self, uri: str) -> dict[str, Any] | list[Any]:
+        """Read an MCP resource by URI and return its parsed JSON contents.
+
+        Resources return ``{contents: [{uri, mimeType, text}]}``; we parse the
+        first content block's ``text`` as JSON.
+        """
+        result = self._mcp_request("resources/read", {"uri": uri})
+        contents = result.get("contents", [])
+        if not contents:
+            return {}
+        text = (contents[0].get("text") or "").strip() or "{}"
         return json.loads(text)
 
     @staticmethod

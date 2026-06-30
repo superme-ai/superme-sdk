@@ -20,6 +20,7 @@ from .services._workgroups import WorkgroupsMixin
 from .services.aio._agentic_resume import AsyncAgenticResumeMixin
 from .services.aio._conversations import AsyncConversationsMixin
 from .services.aio._interviews import AsyncInterviewsMixin
+from .services.aio._profiles import AsyncProfilesMixin
 from .services.aio._provision import AsyncProvisionMixin
 from .services.aio._workgroups import AsyncWorkgroupsMixin
 from .models import ChatCompletion, Choice, Message, Usage
@@ -116,6 +117,7 @@ class SuperMeClient(
         api_key: str,
         base_url: str = "https://mcp.superme.ai",
         rest_base_url: str = "https://www.superme.ai",
+        partner_base_url: str = "https://api.superme.ai",
         timeout: float = 120.0,
     ):
         if not api_key:
@@ -123,6 +125,7 @@ class SuperMeClient(
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.rest_base_url = rest_base_url.rstrip("/")
+        self.partner_base_url = partner_base_url.rstrip("/")
         _auth_headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -136,11 +139,12 @@ class SuperMeClient(
         )
         self._rest_http = httpx.Client(
             base_url=self.rest_base_url,
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-                "Accept": "application/json, text/event-stream",
-            },
+            headers=dict(_auth_headers),
+            timeout=timeout,
+        )
+        self._partner_http = httpx.Client(
+            base_url=self.partner_base_url,
+            headers=dict(_auth_headers),
             timeout=timeout,
         )
         self._rpc_id = 0
@@ -167,6 +171,7 @@ class SuperMeClient(
 
     def close(self) -> None:
         """Close the underlying HTTP client."""
+        self._partner_http.close()
         self._rest_http.close()
         self._http.close()
 
@@ -180,6 +185,7 @@ class SuperMeClient(
 class AsyncSuperMeClient(
     AsyncAgenticResumeMixin,
     AsyncConversationsMixin,
+    AsyncProfilesMixin,
     AsyncInterviewsMixin,
     AsyncWorkgroupsMixin,
     AsyncProvisionMixin,
@@ -207,6 +213,7 @@ class AsyncSuperMeClient(
         api_key: str,
         base_url: str = "https://mcp.superme.ai",
         rest_base_url: str = "https://www.superme.ai",
+        partner_base_url: str = "https://api.superme.ai",
         timeout: float = 120.0,
     ):
         if not api_key:
@@ -214,6 +221,7 @@ class AsyncSuperMeClient(
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.rest_base_url = rest_base_url.rstrip("/")
+        self.partner_base_url = partner_base_url.rstrip("/")
         _auth_headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -227,11 +235,12 @@ class AsyncSuperMeClient(
         )
         self._async_rest_http = httpx.AsyncClient(
             base_url=self.rest_base_url,
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-                "Accept": "application/json, text/event-stream",
-            },
+            headers=dict(_auth_headers),
+            timeout=timeout,
+        )
+        self._async_partner_http = httpx.AsyncClient(
+            base_url=self.partner_base_url,
+            headers=dict(_auth_headers),
             timeout=timeout,
         )
         self._rpc_id = 0
@@ -256,6 +265,7 @@ class AsyncSuperMeClient(
 
     async def aclose(self) -> None:
         """Close the underlying async HTTP clients."""
+        await self._async_partner_http.aclose()
         await self._async_rest_http.aclose()
         await self._async_http.aclose()
 
