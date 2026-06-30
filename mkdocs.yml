@@ -36,6 +36,7 @@ plugins:
             show_source: true
             show_signature_annotations: true
             separate_signature: true
+            show_overloads: false
             members_order: source
 
 markdown_extensions:
