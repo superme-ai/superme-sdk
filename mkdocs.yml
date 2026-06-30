@@ -33,6 +33,10 @@ plugins:
         python:
           options:
             docstring_style: google
+            docstring_options:
+              # Treat each "Returns:" block as one item; otherwise griffe splits
+              # a wrapped multi-line return description into one table row per line.
+              returns_multiple_items: false
             show_source: true
             show_signature_annotations: true
             separate_signature: true
