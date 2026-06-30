@@ -149,6 +149,12 @@ class TestAskStream:
 
 
 class TestAskMyAgentStream:
+    # /partner/agent has two wire eras. Backend PR #5643 translates internal
+    # turn events into the thin PartnerStreamChunk contract (content/tool/done/
+    # error) — the documented shape, see ``test_stops_after_thin_done_chunk``.
+    # Before #5643 deploys it still emits raw turn-lifecycle events; the tests
+    # below pin that the SDK terminates correctly against that legacy shape too
+    # (AGENT_TERMINAL is the union of both, so neither era hangs).
     @respx.mock
     def test_posts_to_partner_agent_and_yields_turn_events(self):
         route = respx.post(f"{PARTNER_BASE}/partner/agent").mock(
@@ -190,6 +196,30 @@ class TestAskMyAgentStream:
             events = list(client.ask_my_agent("hi", stream=True))
         assert len(events) == 1
         assert events[0]["type"] == "turn_failed"
+
+    @respx.mock
+    def test_stops_after_thin_done_chunk(self):
+        # Post-#5643: /partner/agent emits the thin done/error contract — the
+        # stream must stop on `done` and not hang past it.
+        respx.post(f"{PARTNER_BASE}/partner/agent").mock(
+            return_value=httpx.Response(
+                200,
+                content=_sse(
+                    {"type": "tool", "label": "Searching the web"},
+                    {"type": "content", "text": "hi"},
+                    {"type": "done", "conversation_id": "c1"},
+                    {"type": "content", "text": "after"},
+                ),
+                headers={"content-type": "text/event-stream"},
+            )
+        )
+        with SuperMeClient(api_key=FAKE_JWT) as client:
+            events = list(client.ask_my_agent("hi", stream=True))
+        assert [e["type"] for e in events] == ["tool", "content", "done"]
+        # PartnerStreamChunk field shapes, matching backend #5643's translator.
+        assert events[0]["label"] == "Searching the web"
+        assert events[1]["text"] == "hi"
+        assert events[2]["conversation_id"] == "c1"
 
 
 # ---------------------------------------------------------------------------
