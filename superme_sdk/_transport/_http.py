@@ -82,6 +82,19 @@ class HttpMixin:
         text = (raw_text or "").strip() or "{}"
         return json.loads(text)
 
+    def _mcp_read_resource(self, uri: str) -> dict[str, Any] | list[Any]:
+        """Read an MCP resource by URI and return its parsed JSON contents.
+
+        Resources return ``{contents: [{uri, mimeType, text}]}``; we parse the
+        first content block's ``text`` as JSON.
+        """
+        result = self._mcp_request("resources/read", {"uri": uri})
+        contents = result.get("contents", [])
+        if not contents:
+            return {}
+        text = (contents[0].get("text") or "").strip() or "{}"
+        return json.loads(text)
+
     @staticmethod
     def _parse_sse_json(text: str) -> dict:
         """Extract the last JSON-RPC object from an SSE stream.

@@ -2,29 +2,64 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Optional
 
 
 class ProfilesMixin:
-    def get_profile(self, identifier: str) -> dict:
+    def get_profile(self, identifier: Optional[str] = None) -> dict:
         """Return public profile info for a user.
 
         Example:
             ```python
+            me = client.get_profile()
             profile = client.get_profile("ludo")
             print(profile["name"], profile["user_id"])
             ```
 
         Args:
-            identifier: User ID, username, or full name.
+            identifier: User ID, username, or full name. Omit for your own
+                profile.
 
         Returns:
-            Flat profile dict with ``user_id``, ``in_network``, ``name``, and
-            other public fields. Returns ``{}`` if no match is found.
+            When called without ``identifier`` (own profile): dict with
+            ``name``, ``title``, ``location``, ``avatar_image``, and joined
+            communities. When called with ``identifier``: flat profile dict with
+            ``user_id``, ``in_network``, ``name``, and other public fields.
+            Returns ``{}`` if no match is found.
         """
+        if not identifier:
+            result = self._mcp_read_resource("superme://me/profile")
+            return result if isinstance(result, dict) else {}
         result = self._mcp_tool_call("user_profile_search", {"identifier": identifier})
         users = result.get("users", []) if isinstance(result, dict) else []
         return users[0] if users else {}
+
+    def get_user_details(self, identifier: str) -> dict:
+        """Read one user's full public profile by user_id or username.
+
+        Unlike :meth:`get_profile` (a search card — name, title, location), this
+        returns the deep profile: un-truncated summary plus structured work
+        experience, education, and skills. Resolve a name to a user_id or
+        username with :meth:`find_user_by_name` first.
+
+        Example:
+            ```python
+            details = client.get_user_details("elena-verna")
+            print(details["summary"])
+            for job in details["work_experience"]:
+                print(job["company"], job["title"])
+            ```
+
+        Args:
+            identifier: A user_id or username (from a search result).
+
+        Returns:
+            Profile dict with ``user_id``, ``name``, ``title``, ``company``,
+            ``summary``, ``skills``, ``work_experience``, and ``education``.
+            Contains an ``error`` key if the profile is missing or not visible.
+        """
+        result = self._mcp_tool_call("user_details_read", {"identifier": identifier})
+        return result if isinstance(result, dict) else {}
 
     def find_user_by_name(self, name: str, *, limit: int = 10) -> dict:
         """Search for SuperMe users by name.

@@ -4,7 +4,9 @@
     options:
       members:
         - ask
+        - ask_stream
         - ask_my_agent
+        - ask_my_agent_stream
         - list_conversations
         - get_conversation
       show_root_heading: false

@@ -120,23 +120,28 @@ make test-live
 
 ## API Reference
 
-### `SuperMeClient(api_key, base_url="https://mcp.superme.ai", rest_base_url="https://www.superme.ai", timeout=120.0)`
+### `SuperMeClient(api_key, base_url="https://mcp.superme.ai", rest_base_url="https://www.superme.ai", partner_base_url="https://api.superme.ai", timeout=120.0)`
 
 #### Conversations & agent
 
 | Method | Returns | Description |
 |--------|---------|-------------|
 | `ask(question, username, *, conversation_id, max_tokens, incognito)` | `str` | Ask a question to a user's SuperMe agent. Returns the answer text. |
+| `ask_stream(question, username, *, conversation_id)` | `generator` | Stream a user's agent answer via SSE (`POST /partner/ask`). Yields chunk dicts (`content` / `tool` / `done` / `error`); stops after `done`/`error`. |
 | ~~`ask_with_history(messages, username, *, conversation_id, max_tokens, incognito)`~~ | `(str, str\|None)` | **Deprecated** — kept for backward compatibility. Use `ask` with `conversation_id` instead. Only the last user message is sent; the rest of the list is ignored. |
 | `ask_my_agent(question, *, conversation_id)` | `dict` | Talk to your own SuperMe AI agent. Returns `{"response": ..., "conversation_id": ...}`. |
+| `ask_my_agent_stream(question, *, conversation_id)` | `generator` | Stream your own agent's turn via SSE (`POST /partner/agent`). Yields typed turn-event dicts (`turn_started`, `content`, `tool_call`, `turn_completed`, ...); stops at a terminal event. |
 | `list_conversations(*, limit)` | `list[dict]` | List your most recent conversations. |
 | `get_conversation(conversation_id)` | `dict` | Fetch a single conversation with all its messages. |
+
+Async (`AsyncSuperMeClient`) exposes `ask_stream` and `ask_my_agent_stream` as async generators (`async for`).
 
 #### Profiles & search
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `get_profile(identifier)` | `dict` | Get a user's public profile by user ID, username, or name. |
+| `get_profile(identifier=None)` | `dict` | Get a user's public profile card by user ID, username, or name. Omit `identifier` for your own profile. |
+| `get_user_details(identifier)` | `dict` | Read a user's **full** profile — un-truncated summary plus structured work experience, education, and skills (deeper than `get_profile`'s search card). |
 | `find_user_by_name(name, *, limit)` | `dict` | Search for users by name. |
 | `find_users_by_names(names, *, limit_per_name)` | `dict` | Resolve multiple names to SuperMe users in one call. |
 | `find_users_on_topic(question, *, max_results, excluded_user_ids)` | `dict` | Find SuperMe users who are experts on a topic. |
@@ -195,6 +200,35 @@ response = client.chat.completions.create(
 )
 print(response.choices[0].message.content)
 print(response.metadata["conversation_id"])
+```
+
+### Streaming
+
+Stream tokens as they're generated over SSE. `ask_stream` targets another
+user's agent; `ask_my_agent_stream` targets your own.
+
+```python
+# Stream a question to a user's agent
+conversation_id = None
+for chunk in client.ask_stream("What is PMF?", username="ludo"):
+    if chunk["type"] == "content":
+        print(chunk["text"], end="", flush=True)
+    elif chunk["type"] == "done":
+        conversation_id = chunk["conversation_id"]
+
+# Stream your own agent (richer turn events: tool calls, messages, ...)
+for evt in client.ask_my_agent_stream("Summarise my last 3 posts"):
+    if evt["type"] == "content":
+        print(evt["content"], end="", flush=True)
+```
+
+Async (`AsyncSuperMeClient`):
+
+```python
+async with AsyncSuperMeClient(api_key=API_KEY) as client:
+    async for chunk in client.ask_stream("What is PMF?", username="ludo"):
+        if chunk["type"] == "content":
+            print(chunk["text"], end="", flush=True)
 ```
 
 ### Low-level MCP access

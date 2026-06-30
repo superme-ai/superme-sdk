@@ -2,8 +2,15 @@
 
 from __future__ import annotations
 
+import json
 import warnings
+from collections.abc import Iterator
 from typing import Any, Optional
+
+from .._transport._sse import iter_sse_lines
+
+_ASK_TERMINAL = {"done", "error"}
+_AGENT_TERMINAL = {"turn_completed", "turn_failed", "turn_interrupted"}
 
 
 class ConversationsMixin:
@@ -168,11 +175,13 @@ class ConversationsMixin:
         Returns:
             List of conversation summary dicts.
         """
-        result = self._mcp_tool_call("conversation_list", {"limit": limit})
+        result = self._mcp_read_resource("superme://me/conversations")
         if isinstance(result, list):
-            return result
-        conversations = result.get("conversations", [])
-        return conversations if isinstance(conversations, list) else []
+            return result[:limit]
+        conversations = (
+            result.get("conversations", []) if isinstance(result, dict) else []
+        )
+        return conversations[:limit] if isinstance(conversations, list) else []
 
     def get_conversation(self, conversation_id: str) -> dict:
         """Fetch full details of a single conversation, including all messages.
@@ -190,9 +199,8 @@ class ConversationsMixin:
         Returns:
             Conversation dict with metadata and message history.
         """
-        return self._mcp_tool_call(
-            "conversation_read", {"conversation_id": conversation_id}
-        )
+        result = self._mcp_read_resource(f"superme://conversation/{conversation_id}")
+        return result if isinstance(result, dict) else {}
 
     def ask_my_agent(
         self,
@@ -226,4 +234,96 @@ class ConversationsMixin:
             args["conversation_id"] = conversation_id
         return self._mcp_tool_call("ask_my_agent", args)
 
+    def ask_stream(
+        self,
+        question: str,
+        username: str = "ludo",
+        *,
+        conversation_id: Optional[str] = None,
+    ) -> Iterator[dict]:
+        """Stream an answer from a user's agent via ``POST /partner/ask`` (SSE).
 
+        Example:
+            ```python
+            for chunk in client.ask_stream("What is PMF?", username="ludo"):
+                if chunk["type"] == "content":
+                    print(chunk["text"], end="", flush=True)
+                elif chunk["type"] == "done":
+                    conversation_id = chunk["conversation_id"]
+            ```
+
+        Args:
+            question: The question to ask.
+            username: Target SuperMe username or user_id.
+            conversation_id: Continue an existing conversation.
+
+        Yields:
+            Chunk dicts, each with a ``type`` key: ``content`` (``text``),
+            ``tool`` (``label``), ``done`` (``conversation_id``), or
+            ``error`` (``message``). Stops after ``done`` or ``error``.
+        """
+        body: dict[str, Any] = {
+            "identifier": username,
+            "question": question,
+            "stream": True,
+        }
+        if conversation_id:
+            body["conversation_id"] = conversation_id
+        yield from self._stream_partner("/partner/ask", body, _ASK_TERMINAL)
+
+    def ask_my_agent_stream(
+        self,
+        question: str,
+        *,
+        conversation_id: Optional[str] = None,
+    ) -> Iterator[dict]:
+        """Stream your own agent's turn via ``POST /partner/agent`` (SSE).
+
+        Example:
+            ```python
+            for evt in client.ask_my_agent_stream("Summarise my last 3 posts"):
+                if evt["type"] == "content":
+                    print(evt["content"], end="", flush=True)
+                elif evt["type"] == "turn_completed":
+                    conversation_id = evt["conversation_id"]
+            ```
+
+        Args:
+            question: Your message to the agent.
+            conversation_id: Continue an existing conversation.
+
+        Yields:
+            Typed turn-event dicts (``turn_started``, ``content``, ``message``,
+            ``tool_call``, ``tool_result``, ``turn_completed``, ``turn_failed``,
+            ...), each with a ``type`` and ``conversation_id``. Stops after a
+            terminal event (``turn_completed`` / ``turn_failed`` /
+            ``turn_interrupted``).
+        """
+        body: dict[str, Any] = {"question": question, "stream": True}
+        if conversation_id:
+            body["conversation_id"] = conversation_id
+        yield from self._stream_partner("/partner/agent", body, _AGENT_TERMINAL)
+
+    def _stream_partner(
+        self, path: str, body: dict, terminal: set[str]
+    ) -> Iterator[dict]:
+        with self._partner_http.stream(
+            "POST",
+            path,
+            json=body,
+            headers={"Accept-Encoding": "identity"},
+            timeout=None,
+        ) as resp:
+            if not resp.is_success:
+                resp.read()
+            self._check_rest_response(resp)
+            for line in iter_sse_lines(resp):
+                try:
+                    obj = json.loads(line)
+                except (json.JSONDecodeError, ValueError):
+                    continue
+                if not isinstance(obj, dict):
+                    continue
+                yield obj
+                if obj.get("type") in terminal:
+                    return
