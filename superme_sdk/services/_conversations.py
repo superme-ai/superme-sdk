@@ -156,49 +156,6 @@ class ConversationsMixin:
         data = self._mcp_request("tools/list", {})
         return data.get("tools", [])
 
-    def list_conversations(self, *, limit: int = 20) -> list[dict]:
-        """Return the authenticated user's most recent conversations.
-
-        Example:
-            ```python
-            convs = client.list_conversations(limit=5)
-            for c in convs:
-                print(c["conversation_id"], c["title"])
-            ```
-
-        Args:
-            limit: Maximum number of conversations to return.
-
-        Returns:
-            List of conversation summary dicts.
-        """
-        result = self._mcp_read_resource("superme://me/conversations")
-        if isinstance(result, list):
-            return result[:limit]
-        conversations = (
-            result.get("conversations", []) if isinstance(result, dict) else []
-        )
-        return conversations[:limit] if isinstance(conversations, list) else []
-
-    def get_conversation(self, conversation_id: str) -> dict:
-        """Fetch full details of a single conversation, including all messages.
-
-        Example:
-            ```python
-            conv = client.get_conversation("conv_abc123")
-            for msg in conv["messages"]:
-                print(msg["role"], msg["content"])
-            ```
-
-        Args:
-            conversation_id: The conversation ID (from list_conversations).
-
-        Returns:
-            Conversation dict with metadata and message history.
-        """
-        result = self._mcp_read_resource(f"superme://conversation/{conversation_id}")
-        return result if isinstance(result, dict) else {}
-
     def ask_my_agent(
         self,
         question: str,

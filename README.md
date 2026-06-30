@@ -131,10 +131,8 @@ make test-live
 | ~~`ask_with_history(messages, username, *, conversation_id, max_tokens, incognito)`~~ | `(str, str\|None)` | **Deprecated** — kept for backward compatibility. Use `ask` with `conversation_id` instead. Only the last user message is sent; the rest of the list is ignored. |
 | `ask_my_agent(question, *, conversation_id)` | `dict` | Talk to your own SuperMe AI agent. Returns `{"response": ..., "conversation_id": ...}`. |
 | `ask_my_agent_stream(question, *, conversation_id)` | `generator` | Stream your own agent's turn via SSE (`POST /partner/agent`). Yields typed turn-event dicts (`turn_started`, `content`, `tool_call`, `turn_completed`, ...); stops at a terminal event. |
-| `list_conversations(*, limit)` | `list[dict]` | List your most recent conversations. |
-| `get_conversation(conversation_id)` | `dict` | Fetch a single conversation with all its messages. |
 
-`AsyncSuperMeClient` mirrors these: `ask_stream` / `ask_my_agent_stream` are async generators (`async for`), and `ask_my_agent`, `list_conversations`, `get_conversation`, `get_profile`, `get_user_details`, `find_user_by_name`, `find_users_by_names`, and `find_users_on_topic` are awaitable.
+`AsyncSuperMeClient` mirrors these: `ask_stream` / `ask_my_agent_stream` are async generators (`async for`), and `ask_my_agent`, `get_profile`, `get_user_details`, `find_user_by_name`, `find_users_by_names`, and `find_users_on_topic` are awaitable.
 
 #### Profiles & search
 

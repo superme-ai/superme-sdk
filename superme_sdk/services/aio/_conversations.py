@@ -33,25 +33,6 @@ class AsyncConversationsMixin:
             args["conversation_id"] = conversation_id
         return await self._async_mcp_tool_call("ask_my_agent", args)
 
-    async def list_conversations(self, *, limit: int = 20) -> list[dict]:
-        """Return the authenticated user's most recent conversations (async).
-
-        Reads the ``superme://me/conversations`` MCP resource (server-capped at
-        ~20); ``limit`` slices client-side.
-        """
-        result = await self._async_mcp_read_resource("superme://me/conversations")
-        if isinstance(result, list):
-            return result[:limit]
-        convs = result.get("conversations", []) if isinstance(result, dict) else []
-        return convs[:limit] if isinstance(convs, list) else []
-
-    async def get_conversation(self, conversation_id: str) -> dict:
-        """Fetch full details of a single conversation, including messages (async)."""
-        result = await self._async_mcp_read_resource(
-            f"superme://conversation/{conversation_id}"
-        )
-        return result if isinstance(result, dict) else {}
-
     async def ask_stream(
         self,
         question: str,

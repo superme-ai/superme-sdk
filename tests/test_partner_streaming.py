@@ -78,8 +78,6 @@ def test_async_read_methods_exist():
         "find_user_by_name",
         "find_users_by_names",
         "find_users_on_topic",
-        "list_conversations",
-        "get_conversation",
     ):
         assert callable(getattr(AsyncSuperMeClient, name)), f"async missing {name}"
 
@@ -247,19 +245,6 @@ class TestAsyncStreaming:
 
     @pytest.mark.asyncio
     @respx.mock
-    async def test_async_list_conversations_reads_resource(self):
-        route = respx.post(f"{MCP_BASE}/mcp/").mock(
-            return_value=_rpc_resource([{"id": "c1"}, {"id": "c2"}])
-        )
-        async with AsyncSuperMeClient(api_key=FAKE_JWT) as client:
-            result = await client.list_conversations(limit=5)
-        body = json.loads(route.calls[0].request.content)
-        assert body["method"] == "resources/read"
-        assert body["params"]["uri"] == "superme://me/conversations"
-        assert len(result) == 2
-
-    @pytest.mark.asyncio
-    @respx.mock
     async def test_async_get_profile_own_reads_resource(self):
         route = respx.post(f"{MCP_BASE}/mcp/").mock(
             return_value=_rpc_resource({"name": "Me"})
@@ -297,41 +282,11 @@ class TestGetUserDetails:
 
 
 # ---------------------------------------------------------------------------
-# resource-backed reads (fixes broken conversation_list/conversation_read)
+# resource-backed own-profile read
 # ---------------------------------------------------------------------------
 
 
 class TestResourceBackedReads:
-    @respx.mock
-    def test_list_conversations_reads_resource(self):
-        convs = [{"conversation_id": "c1"}, {"conversation_id": "c2"}]
-        route = respx.post(f"{MCP_BASE}/mcp/").mock(return_value=_rpc_resource(convs))
-        with SuperMeClient(api_key=FAKE_JWT) as client:
-            result = client.list_conversations(limit=5)
-        body = json.loads(route.calls[0].request.content)
-        assert body["method"] == "resources/read"
-        assert body["params"]["uri"] == "superme://me/conversations"
-        assert result == convs
-
-    @respx.mock
-    def test_list_conversations_respects_limit(self):
-        convs = [{"conversation_id": f"c{i}"} for i in range(10)]
-        respx.post(f"{MCP_BASE}/mcp/").mock(return_value=_rpc_resource(convs))
-        with SuperMeClient(api_key=FAKE_JWT) as client:
-            result = client.list_conversations(limit=3)
-        assert len(result) == 3
-
-    @respx.mock
-    def test_get_conversation_reads_resource(self):
-        conv = {"conversation_id": "c1", "messages": [{"role": "user"}]}
-        route = respx.post(f"{MCP_BASE}/mcp/").mock(return_value=_rpc_resource(conv))
-        with SuperMeClient(api_key=FAKE_JWT) as client:
-            result = client.get_conversation("c1")
-        body = json.loads(route.calls[0].request.content)
-        assert body["method"] == "resources/read"
-        assert body["params"]["uri"] == "superme://conversation/c1"
-        assert result == conv
-
     @respx.mock
     def test_get_profile_own_reads_resource(self):
         me = {"name": "Me", "title": "Founder"}
