@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator, Awaitable
 from typing import Any, Literal, Optional, overload
 
-from ..._transport._terminals import AGENT_TERMINAL, ASK_TERMINAL
+from ..._transport._terminals import ASK_TERMINAL
 from ...streaming import PartnerStreamChunk
 
 
@@ -89,61 +89,3 @@ class AsyncConversationsMixin:
         self._check_rest_response(resp)
         data = resp.json()
         return data.get("answer", "") if isinstance(data, dict) else ""
-
-    @overload
-    def ask_my_agent(
-        self,
-        question: str,
-        *,
-        conversation_id: Optional[str] = ...,
-        stream: Literal[False] = ...,
-    ) -> Awaitable[dict]: ...
-
-    @overload
-    def ask_my_agent(
-        self,
-        question: str,
-        *,
-        conversation_id: Optional[str] = ...,
-        stream: Literal[True],
-    ) -> AsyncIterator[PartnerStreamChunk]: ...
-
-    def ask_my_agent(
-        self,
-        question: str,
-        *,
-        conversation_id: Optional[str] = None,
-        stream: bool = False,
-    ) -> Awaitable[dict] | AsyncIterator[PartnerStreamChunk]:
-        """Talk to your own SuperMe AI agent (async).
-
-        Example:
-            ```python
-            result = await client.ask_my_agent("Summarise my last 3 posts")
-
-            async for chunk in client.ask_my_agent("Summarise my posts", stream=True):
-                if chunk["type"] == "content":
-                    print(chunk["text"], end="", flush=True)
-            ```
-
-        Returns:
-            An awaitable resolving to a dict with ``response`` and
-            ``conversation_id``, or — when ``stream=True`` — an async generator
-            of partner chunk dicts (``content``/``tool``/``done``/``error``),
-            stopping after ``done`` or ``error``.
-        """
-        if stream:
-            body: dict[str, Any] = {"question": question, "stream": True}
-            if conversation_id:
-                body["conversation_id"] = conversation_id
-            return self._aiter_sse(
-                self._async_partner_http,
-                "POST",
-                "/partner/agent",
-                json=body,
-                is_terminal=lambda o: o.get("type") in AGENT_TERMINAL,
-            )
-        args: dict[str, Any] = {"question": question}
-        if conversation_id:
-            args["conversation_id"] = conversation_id
-        return self._async_mcp_tool_call("ask_my_agent", args)

@@ -6,7 +6,7 @@ import warnings
 from collections.abc import Iterator
 from typing import Any, Literal, Optional, overload
 
-from .._transport._terminals import AGENT_TERMINAL, ASK_TERMINAL
+from .._transport._terminals import ASK_TERMINAL
 from ..streaming import PartnerStreamChunk
 
 
@@ -206,70 +206,3 @@ class ConversationsMixin:
         )
         data = self._mcp_request("tools/list", {})
         return data.get("tools", [])
-
-    @overload
-    def ask_my_agent(
-        self,
-        question: str,
-        *,
-        conversation_id: Optional[str] = ...,
-        stream: Literal[False] = ...,
-    ) -> dict: ...
-
-    @overload
-    def ask_my_agent(
-        self,
-        question: str,
-        *,
-        conversation_id: Optional[str] = ...,
-        stream: Literal[True],
-    ) -> Iterator[PartnerStreamChunk]: ...
-
-    def ask_my_agent(
-        self,
-        question: str,
-        *,
-        conversation_id: Optional[str] = None,
-        stream: bool = False,
-    ) -> dict | Iterator[PartnerStreamChunk]:
-        """Talk to your own SuperMe AI agent.
-
-        Example:
-            ```python
-            result = client.ask_my_agent("Summarise my last 3 posts")
-            print(result["response"])
-
-            # streaming (yields partner chunk dicts over SSE)
-            for chunk in client.ask_my_agent("Summarise my posts", stream=True):
-                if chunk["type"] == "content":
-                    print(chunk["text"], end="", flush=True)
-            ```
-
-        Args:
-            question: Your message to the agent.
-            conversation_id: Continue an existing conversation.
-            stream: If True, return a generator of SSE chunk dicts instead of
-                the final dict.
-
-        Returns:
-            Dict with ``response`` and ``conversation_id``, or — when
-            ``stream=True`` — a generator yielding partner chunk dicts (``type``:
-            ``content``/``tool``/``done``/``error`` — see
-            :data:`~superme_sdk.streaming.PartnerStreamChunk`), stopping after
-            ``done`` or ``error``.
-        """
-        if stream:
-            body: dict[str, Any] = {"question": question, "stream": True}
-            if conversation_id:
-                body["conversation_id"] = conversation_id
-            return self._iter_sse(
-                self._partner_http,
-                "POST",
-                "/partner/agent",
-                json=body,
-                is_terminal=lambda o: o.get("type") in AGENT_TERMINAL,
-            )
-        args: dict[str, Any] = {"question": question}
-        if conversation_id:
-            args["conversation_id"] = conversation_id
-        return self._mcp_tool_call("ask_my_agent", args)

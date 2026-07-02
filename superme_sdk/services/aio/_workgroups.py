@@ -21,15 +21,6 @@ class AsyncWorkgroupsMixin:
             return groups if isinstance(groups, list) else []
         return []
 
-    async def get_workgroup(self, workgroup_id: str) -> Optional[dict]:
-        """Get a single workgroup by ID (async)."""
-        result = await self._async_mcp_tool_call(
-            "workgroup_read", {"workgroup_id": workgroup_id}
-        )
-        if isinstance(result, dict) and "error" not in result:
-            return result
-        return None
-
     async def create_workgroup(
         self,
         name: str,

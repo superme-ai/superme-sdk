@@ -128,9 +128,8 @@ make test-live
 |--------|---------|-------------|
 | `ask(question, username, conversation_id, max_tokens, incognito, stream=False)` | `str` \| `generator` | Ask a question to a user's SuperMe agent. Returns the answer text, or — with `stream=True` — a generator of SSE chunk dicts (`content` / `tool` / `done` / `error`, via `POST /partner/ask`). `incognito`/`max_tokens` apply to non-streaming only. |
 | ~~`ask_with_history(messages, username, *, conversation_id, max_tokens, incognito)`~~ | `(str, str\|None)` | **Deprecated** — kept for backward compatibility. Use `ask` with `conversation_id` instead. Only the last user message is sent; the rest of the list is ignored. |
-| `ask_my_agent(question, *, conversation_id, stream=False)` | `dict` \| `generator` | Talk to your own SuperMe AI agent. Returns `{"response": ..., "conversation_id": ...}`, or — with `stream=True` — a generator of partner chunk dicts (`content` / `tool` / `done` / `error`, via `POST /partner/agent`) — the same shape as `ask`. |
 
-`AsyncSuperMeClient` mirrors these: with `stream=True`, `ask` / `ask_my_agent` return async generators (`async for`); otherwise they are awaitable (`await`). `get_profile`, `get_user_details`, `find_user_by_name`, `find_users_by_names`, and `find_users_on_topic` are awaitable.
+`AsyncSuperMeClient` mirrors these: with `stream=True`, `ask` returns an async generator (`async for`); otherwise it is awaitable (`await`). `get_profile`, `get_user_details`, `find_user_by_name`, `find_users_by_names`, and `find_users_on_topic` are awaitable.
 
 #### Profiles & search
 
@@ -201,7 +200,7 @@ print(response.metadata["conversation_id"])
 ### Streaming
 
 Pass `stream=True` to stream tokens as they're generated over SSE. `ask`
-targets another user's agent; `ask_my_agent` targets your own.
+targets a user's agent.
 
 ```python
 # Stream a question to a user's agent
@@ -211,11 +210,6 @@ for chunk in client.ask("What is PMF?", username="ludo", stream=True):
         print(chunk["text"], end="", flush=True)
     elif chunk["type"] == "done":
         conversation_id = chunk["conversation_id"]
-
-# Stream your own agent — same chunk shape (content / tool / done / error)
-for chunk in client.ask_my_agent("Summarise my last 3 posts", stream=True):
-    if chunk["type"] == "content":
-        print(chunk["text"], end="", flush=True)
 ```
 
 Async (`AsyncSuperMeClient`) — `stream=True` returns an async generator:

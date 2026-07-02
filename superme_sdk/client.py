@@ -201,8 +201,8 @@ class AsyncSuperMeClient(
     Example::
 
         async with AsyncSuperMeClient(api_key="your-superme-api-key") as client:
-            result = await client.ask_my_agent("Summarise my last 3 posts")
-            print(result["response"])
+            answer = await client.ask("What is PMF?", username="ludo")
+            print(answer)
 
             async for event in client.stream_interview("interview_abc123"):
                 print(event)
