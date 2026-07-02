@@ -1,4 +1,4 @@
-"""Tests for partner SSE streaming (ask(stream=True), ask_my_agent(stream=True)) and the
+"""Tests for partner SSE streaming (ask(stream=True)) and the
 resource-backed conversation reads + user_details_read. Unit (mocked) only."""
 
 from __future__ import annotations
@@ -62,9 +62,8 @@ def _rpc_resource(payload) -> httpx.Response:
 
 
 def test_streaming_methods_exist():
-    for name in ("ask", "ask_my_agent"):
-        assert callable(getattr(SuperMeClient, name))
-        assert callable(getattr(AsyncSuperMeClient, name))
+    assert callable(getattr(SuperMeClient, "ask"))
+    assert callable(getattr(AsyncSuperMeClient, "ask"))
 
 
 def test_get_user_details_exists():
@@ -144,85 +143,6 @@ class TestAskStream:
 
 
 # ---------------------------------------------------------------------------
-# ask_my_agent(stream=True) → /partner/agent
-# ---------------------------------------------------------------------------
-
-
-class TestAskMyAgentStream:
-    # /partner/agent has two wire eras. Backend PR #5643 translates internal
-    # turn events into the thin PartnerStreamChunk contract (content/tool/done/
-    # error) — the documented shape, see ``test_stops_after_thin_done_chunk``.
-    # Before #5643 deploys it still emits raw turn-lifecycle events; the tests
-    # below pin that the SDK terminates correctly against that legacy shape too
-    # (AGENT_TERMINAL is the union of both, so neither era hangs).
-    @respx.mock
-    def test_posts_to_partner_agent_and_yields_turn_events(self):
-        route = respx.post(f"{PARTNER_BASE}/partner/agent").mock(
-            return_value=httpx.Response(
-                200,
-                content=_sse(
-                    {"type": "turn_started", "conversation_id": "c1", "turn_id": "t1"},
-                    {"type": "content", "conversation_id": "c1", "content": "hi"},
-                    {
-                        "type": "turn_completed",
-                        "conversation_id": "c1",
-                        "turn_id": "t1",
-                    },
-                ),
-                headers={"content-type": "text/event-stream"},
-            )
-        )
-        with SuperMeClient(api_key=FAKE_JWT) as client:
-            events = list(client.ask_my_agent("summarise", stream=True))
-
-        body = json.loads(route.calls[0].request.content)
-        assert body["question"] == "summarise"
-        assert body["stream"] is True
-        assert [e["type"] for e in events][-1] == "turn_completed"
-
-    @respx.mock
-    def test_stops_after_turn_failed(self):
-        respx.post(f"{PARTNER_BASE}/partner/agent").mock(
-            return_value=httpx.Response(
-                200,
-                content=_sse(
-                    {"type": "turn_failed", "conversation_id": "c1", "error": "x"},
-                    {"type": "content", "conversation_id": "c1", "content": "nope"},
-                ),
-                headers={"content-type": "text/event-stream"},
-            )
-        )
-        with SuperMeClient(api_key=FAKE_JWT) as client:
-            events = list(client.ask_my_agent("hi", stream=True))
-        assert len(events) == 1
-        assert events[0]["type"] == "turn_failed"
-
-    @respx.mock
-    def test_stops_after_thin_done_chunk(self):
-        # Post-#5643: /partner/agent emits the thin done/error contract — the
-        # stream must stop on `done` and not hang past it.
-        respx.post(f"{PARTNER_BASE}/partner/agent").mock(
-            return_value=httpx.Response(
-                200,
-                content=_sse(
-                    {"type": "tool", "label": "Searching the web"},
-                    {"type": "content", "text": "hi"},
-                    {"type": "done", "conversation_id": "c1"},
-                    {"type": "content", "text": "after"},
-                ),
-                headers={"content-type": "text/event-stream"},
-            )
-        )
-        with SuperMeClient(api_key=FAKE_JWT) as client:
-            events = list(client.ask_my_agent("hi", stream=True))
-        assert [e["type"] for e in events] == ["tool", "content", "done"]
-        # PartnerStreamChunk field shapes, matching backend #5643's translator.
-        assert events[0]["label"] == "Searching the web"
-        assert events[1]["text"] == "hi"
-        assert events[2]["conversation_id"] == "c1"
-
-
-# ---------------------------------------------------------------------------
 # async streaming
 # ---------------------------------------------------------------------------
 
@@ -244,24 +164,6 @@ class TestAsyncStreaming:
         async with AsyncSuperMeClient(api_key=FAKE_JWT) as client:
             chunks = [c async for c in client.ask("hi", username="ludo", stream=True)]
         assert [c["type"] for c in chunks] == ["content", "done"]
-
-    @pytest.mark.asyncio
-    @respx.mock
-    async def test_async_agent_stream_stops_at_terminal(self):
-        respx.post(f"{PARTNER_BASE}/partner/agent").mock(
-            return_value=httpx.Response(
-                200,
-                content=_sse(
-                    {"type": "content", "conversation_id": "c1", "content": "x"},
-                    {"type": "turn_completed", "conversation_id": "c1"},
-                    {"type": "content", "conversation_id": "c1", "content": "after"},
-                ),
-                headers={"content-type": "text/event-stream"},
-            )
-        )
-        async with AsyncSuperMeClient(api_key=FAKE_JWT) as client:
-            events = [e async for e in client.ask_my_agent("hi", stream=True)]
-        assert [e["type"] for e in events] == ["content", "turn_completed"]
 
     @pytest.mark.asyncio
     @respx.mock

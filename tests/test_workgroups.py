@@ -53,23 +53,6 @@ def test_list_workgroups_empty():
 
 
 @respx.mock
-def test_get_workgroup_returns_dict():
-    _mock_mcp(GROUP)
-    client = SuperMeClient(api_key="tok")
-    result = client.get_workgroup("wg_abc")
-    assert result == GROUP
-    client.close()
-
-
-@respx.mock
-def test_get_workgroup_returns_none_on_error():
-    _mock_mcp({"error": "Workgroup not found: wg_missing"})
-    client = SuperMeClient(api_key="tok")
-    assert client.get_workgroup("wg_missing") is None
-    client.close()
-
-
-@respx.mock
 def test_create_workgroup_returns_group():
     route = _mock_mcp(GROUP)
     client = SuperMeClient(api_key="tok")

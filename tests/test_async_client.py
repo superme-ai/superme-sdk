@@ -24,16 +24,6 @@ def _sse(*objs) -> bytes:
     return "".join(f"data: {json.dumps(o)}\n\n" for o in objs).encode()
 
 
-def _mcp_tool_response(result_dict: dict) -> dict:
-    return {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "result": {
-            "content": [{"type": "text", "text": json.dumps(result_dict)}],
-        },
-    }
-
-
 # ---------------------------------------------------------------------------
 # construction
 # ---------------------------------------------------------------------------
@@ -52,26 +42,6 @@ async def test_async_client_stores_token():
 async def test_async_client_context_manager():
     async with AsyncSuperMeClient(api_key="tok") as client:
         assert client.token == "tok"
-
-
-# ---------------------------------------------------------------------------
-# ask_my_agent (non-streaming)
-# ---------------------------------------------------------------------------
-
-
-@respx.mock
-async def test_ask_my_agent_returns_dict():
-    respx.post(f"{MCP_BASE}/mcp/").mock(
-        return_value=httpx.Response(
-            200,
-            json=_mcp_tool_response(
-                {"response": "Great question!", "conversation_id": "c1"}
-            ),
-        )
-    )
-    async with AsyncSuperMeClient(api_key="tok") as client:
-        result = await client.ask_my_agent("What is PMF?")
-    assert result["response"] == "Great question!"
 
 
 # ---------------------------------------------------------------------------
@@ -186,7 +156,7 @@ async def test_async_client_mcp_error_raises():
     )
     async with AsyncSuperMeClient(api_key="tok") as client:
         with pytest.raises(MCPError, match="MCP error -32600"):
-            await client.ask_my_agent("hi")
+            await client.get_user_details("someone")
 
 
 # ---------------------------------------------------------------------------
@@ -205,5 +175,3 @@ async def test_live_get_agentic_resume(async_live_client):
 async def test_live_stream_interview_list(async_live_client):
     interviews = await async_live_client.list_my_interviews()
     assert isinstance(interviews, list)
-
-

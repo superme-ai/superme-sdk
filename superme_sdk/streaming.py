@@ -1,7 +1,7 @@
 """Typed shapes for the SSE chunks yielded by streaming calls.
 
-Both ``ask(..., stream=True)`` and ``ask_my_agent(..., stream=True)`` yield the
-same four partner chunk types — see the partner API docs (the source of truth):
+``ask(..., stream=True)`` yields these four partner chunk types — see the
+partner API docs (the source of truth):
 https://api.superme.ai/partner/docs
 
 These are ``TypedDict``s: at runtime each chunk is a plain ``dict`` (zero

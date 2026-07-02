@@ -80,19 +80,6 @@ def test_live_ask_conversation_continuity(live_client, live_username):
 
 
 # ---------------------------------------------------------------------------
-# Ask my agent
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.live
-def test_live_ask_my_agent(live_client):
-    result = live_client.ask_my_agent("Say hello in one sentence.")
-    assert isinstance(result, dict)
-    assert "response" in result or "answer" in result or "content" in result
-    assert "conversation_id" in result
-
-
-# ---------------------------------------------------------------------------
 # Low-level MCP access
 # ---------------------------------------------------------------------------
 

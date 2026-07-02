@@ -31,24 +31,6 @@ class WorkgroupsMixin:
             return workgroups if isinstance(workgroups, list) else []
         return []
 
-    def get_workgroup(self, workgroup_id: str) -> Optional[dict]:
-        """Get a single workgroup by ID.
-
-        Example:
-            ```python
-            workgroup = client.get_workgroup("abc123")
-            for m in workgroup["members"]:
-                print(m["user_id"], m["name"])
-            ```
-
-        Returns:
-            Workgroup dict, or ``None`` if no workgroup with that ID exists.
-        """
-        result = self._mcp_tool_call("workgroup_read", {"workgroup_id": workgroup_id})
-        if isinstance(result, dict) and "error" not in result:
-            return result
-        return None
-
     def create_workgroup(
         self,
         name: str,

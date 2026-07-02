@@ -1,8 +1,8 @@
 # Streaming events
 
-Both `ask(stream=True)` and `ask_my_agent(stream=True)` yield the same partner
-chunks over SSE. At runtime each chunk is a plain `dict` — discriminate on
-`["type"]`. The stream stops after `done` or `error`.
+`ask(stream=True)` yields partner chunks over SSE. At runtime each chunk is a
+plain `dict` — discriminate on `["type"]`. The stream stops after `done` or
+`error`.
 
 | `type` | fields | meaning |
 |--------|--------|---------|
