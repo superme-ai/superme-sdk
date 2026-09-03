@@ -234,6 +234,27 @@ profiles = client.mcp_tool_call("user_profile_search", {"identifier": "ludo"})
 result = client.raw_request("tools/list")
 ```
 
+## Cursor Marketplace Plugin
+
+Install **SuperMe** from Cursor's **Customize** Marketplace to connect Cursor agents to
+our hosted MCP server in one click. It lets Cursor search trusted expert knowledge,
+ask SuperMe agents, and manage workgroups without running a local server.
+
+### Setup
+
+1. Sign in to [SuperMe Settings](https://superme.ai/settings) and open **API Keys**.
+2. Select **Generate New API Key**, name it for Cursor, and copy it when shown.
+3. In Cursor's **Customize** page, open the Marketplace and install **SuperMe**
+   (or run `/add-plugin superme`).
+4. A **Cursor team admin** opens **Dashboard → Plugins → Configure** and pastes the
+   key into **SuperMe API key**.
+
+Cursor documents plugin-variable configuration for team admins. If your personal
+installation does not offer **Plugins → Configure**, use the standard manual Cursor
+`mcp.json` setup below instead. The plugin stores the key as Cursor's `SUPERME_TOKEN`
+variable and sends it only as the bearer token to `https://mcp.superme.ai`. Treat it
+as a secret; revoke it from SuperMe Settings if it is exposed.
+
 ## MCP Setup
 
 Connect the SuperMe MCP server (`https://mcp.superme.ai`) to your AI client.
