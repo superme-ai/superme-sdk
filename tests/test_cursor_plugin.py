@@ -14,7 +14,7 @@ def test_cursor_plugin_manifest_references_local_assets():
 
     assert manifest["name"] == "superme"
     assert manifest["mcpServers"] == "./mcp.json"
-    assert manifest["logo"] == "assets/superme.svg"
+    assert manifest["logo"] == "assets/superme.png"
     assert (REPO_ROOT / manifest["mcpServers"]).is_file()
     assert (REPO_ROOT / manifest["logo"]).is_file()
 
