@@ -1,0 +1,45 @@
+{
+  "name": "superme",
+  "displayName": "SuperMe",
+  "version": "1.0.0",
+  "minClientVersions": {
+    "cursor": "3.13.0"
+  },
+  "description": "Search trusted expert knowledge, ask SuperMe agents, and manage workgroups from Cursor.",
+  "author": {
+    "name": "SuperMe",
+    "email": "support@superme.ai"
+  },
+  "publisher": "SuperMe",
+  "homepage": "https://superme.ai",
+  "repository": "https://github.com/superme-ai/superme-sdk",
+  "license": "MIT",
+  "logo": "assets/superme.svg",
+  "keywords": [
+    "superme",
+    "experts",
+    "knowledge",
+    "research",
+    "workgroups",
+    "mcp"
+  ],
+  "category": "integrations",
+  "tags": [
+    "superme",
+    "mcp",
+    "research",
+    "knowledge"
+  ],
+  "variables": {
+    "type": "object",
+    "properties": {
+      "SUPERME_TOKEN": {
+        "type": "string",
+        "title": "SuperMe API key",
+        "description": "Create an API key at https://superme.ai/settings, then paste it here."
+      }
+    },
+    "required": ["SUPERME_TOKEN"]
+  },
+  "mcpServers": "./mcp.json"
+}
